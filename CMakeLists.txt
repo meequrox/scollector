@@ -9,6 +9,8 @@ add_executable(scollector src/main.cpp)
 
 target_sources(scollector PRIVATE
     src/args.hpp
+
+    src/args.cpp
 )
 
 install(TARGETS scollector
