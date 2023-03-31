@@ -1,45 +1,71 @@
 #include "downloader.hpp"
 
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 // TODO: add user-specific options to args parser
-#define DL_OPTS_GENERAL "--ignore-errors --use-extractors soundcloud "
-#define DL_OPTS_VIDEO "--match-filter \"duration<=?600\" "
-#define DL_OPTS_DOWNLOAD "-r 8M "
+#define OPTS_GEN "--ignore-errors "
+#define OPTS_VID "--match-filter \"duration<=?600\" "
+#define OPTS_DL "-r 8M "
 // TODO: try --restrict-filenames
-#define DL_OPTS_FS "--force-overwrites -o \"%(uploader)s - %(title)s.%(ext)s\" --windows-filenames "
-#define DL_OPTS_THUMB "--write-thumbnail "
-#define DL_OPTS_VERBOSE "--no-warnings "
-#define DL_OPTS_PP "--embed-thumbnail --add-metadata "
+#define OPTS_FS "--force-overwrites -o \"%(uploader)s - %(title)s.%(ext)s\" --windows-filenames "
+#define OPTS_THM "--write-thumbnail "
+#define OPTS_VRB "--no-warnings "
+#define OPTS_PP "--embed-thumbnail --add-metadata "
 
-#define DL_OPTS_ALL \
-    DL_OPTS_GENERAL DL_OPTS_VIDEO DL_OPTS_DOWNLOAD DL_OPTS_FS DL_OPTS_THUMB DL_OPTS_VERBOSE DL_OPTS_PP
+#define OPTS_ALL OPTS_GEN OPTS_VID OPTS_DL OPTS_FS OPTS_THM OPTS_VRB OPTS_PP
 
 #define SC_BASEURL "https://soundcloud.com/discover/sets/charts-"
 #define PIPE_TO_STDOUT " 2>&1 "
 
 namespace mqr {
+using json = nlohmann::json;
+
 downloader::downloader() : lang("ru") {}
 
-bool downloader::download() {
+bool downloader::download(bool verbose) {
+    if (verbose) {
+        print_charts();
+        print_genres();
+    }
+
     for (const auto& chart : charts) {
         for (const auto& genre : genres) {
             std::string url = SC_BASEURL + chart + ":" + genre + ":" + lang + " ";
-            std::string cmd = "yt_dlp " + url + DL_OPTS_ALL;
+            std::string cmd = "yt-dlp " + url + OPTS_ALL + "--dump-json ";
 
-            // IN PROGRESS
-            std::cout << cmd << std::endl << std::endl;
-            //    FILE* pipe = popen(cmd PIPE_TO_NULL, "r");
-            //    if (!pipe) {
-            //        std::cerr << "Error: failed to open pipe" << std::endl;
-            //        std::cerr << "Command: " << cmd << std::endl;
-            //        return EXIT_FAILURE;
-            //    }
-            //    std::string output;
-            //    char buffer[1024] = {'\0'};
-            //    while (fgets(buffer, 1024, pipe)) output += buffer;
-            //    pclose(pipe);
-            //    std::cout << output;
+            std::cout << std::endl
+                      << "Loading " << chart << ":" << genre << ". It may take a while." << std::endl;
+            if (verbose) std::cout << cmd << std::endl;
+
+            FILE* pipe = popen((cmd + PIPE_TO_STDOUT).c_str(), "r");
+            if (!pipe) {
+                std::cerr << "Error: failed to open pipe" << std::endl;
+                std::cerr << "Command: " << cmd << std::endl;
+                return EXIT_FAILURE;
+            }
+
+            std::string output;
+
+            char buffer[1024] = {'\0'};
+            while (fgets(buffer, 1024, pipe)) output += buffer;
+            pclose(pipe);
+
+            // Fix json
+            size_t index = 0;
+            while (true) {
+                index = output.find("}}\n{", index);
+                if (index == std::string::npos) break;
+
+                output.replace(index, std::size("}}\n{\"id\":"), "}}, {\"id\":");
+                index += std::size("}}\n{\"id\":");
+            }
+            output = "[" + output + "]";
+
+            json j = json::parse(output);
+            // TODO
+
+            std::cout << "Finish " << chart << ":" << genre << " download" << std::endl;
         }
     }
 

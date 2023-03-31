@@ -27,11 +27,9 @@ int main(int argc, char** argv) {
         system("yt-dlp --version");
 
         std::cout << "Output directory: " << args.output << std::endl;
-        dl.print_charts();
-        dl.print_genres();
     }
 
-    dl.download();
+    if (!dl.download(args.verbose)) std::cout << "There were some errors while downloading" << std::endl;
 
     return EXIT_SUCCESS;
 }

@@ -13,7 +13,7 @@ class downloader {
 
    public:
     downloader();
-    bool download();
+    bool download(bool verbose);
 
     void print_charts();
     void print_genres();
