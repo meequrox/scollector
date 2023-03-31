@@ -4,6 +4,14 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
+    #define PIPE_TO_NULL " 2>NUL 1>NUL "
+#else
+    #define PIPE_TO_NULL " 2>/dev/null 1>/dev/null "
+#endif
+
+#define PIPE_TO_STDOUT " 2>&1 "
+
 namespace mqr {
 class downloader {
    private:

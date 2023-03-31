@@ -3,12 +3,6 @@
 #include "args.hpp"
 #include "downloader.hpp"
 
-#ifdef _WIN32
-    #define PIPE_TO_NULL " 2>NUL 1>NUL "
-#else
-    #define PIPE_TO_NULL " 2>/dev/null 1>/dev/null "
-#endif
-
 int main(int argc, char** argv) {
     if (system("yt-dlp -h" PIPE_TO_NULL) != 0) {
         std::cerr << "yt-dlp not found" << std::endl;
