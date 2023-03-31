@@ -1,7 +1,10 @@
 #include <iostream>
 
-int main() {
-    std::cout << "scollector" << std::endl;
+#include "args.hpp"
 
-    return 0;
+int main(int argc, char** argv) {
+    mqr::args args;
+    if (!args.parse(argc, argv)) return EXIT_FAILURE;
+
+    return EXIT_SUCCESS;
 }
