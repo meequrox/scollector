@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
     mqr::args args;
     if (!args.parse(argc, argv)) return EXIT_FAILURE;
 
-    mqr::downloader dl(args.output);
+    mqr::downloader dl(args.output, args.rate_limit);
 
     if (args.verbose) {
         std::cout << args << std::endl;

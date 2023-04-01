@@ -64,6 +64,15 @@ bool args::parse(int argc, char** argv) {
                     cleanup = true;
                 } else if (ch == 'n') {
                     normalize = true;
+                } else if (ch == 'r') {
+                    if (i + 1 >= argc) {
+                        std::cout << "-r option without next arg" << std::endl;
+                        help();
+                        return false;
+                    }
+
+                    rate_limit = argv[i + 1];
+                    i++;
                 } else {
                     std::cout << "Unknown option -" << ch << std::endl;
                     help();
@@ -83,6 +92,7 @@ bool args::parse(int argc, char** argv) {
 void args::reset_options() {
     verbose = false;
     cleanup = false;
+    normalize = false;
     output = fs::current_path();
 }
 
@@ -110,6 +120,9 @@ void args::help() {
               << "normalize song filenames in directory" << std::endl;
     std::cout << LW(w) << ""
               << "with this option {.mp3, .wav, .aac} files will be renamed" << std::endl;
+
+    std::cout << LW(w) << " -r"
+              << "maximum download rate in bytes per second, e.g. 50K or 4.2M" << std::endl;
 }
 
 std::ostream& operator<<(std::ostream& os, const args& obj) {
@@ -118,6 +131,7 @@ std::ostream& operator<<(std::ostream& os, const args& obj) {
     watch(os, obj.output);
     watch(os, obj.cleanup);
     watch(os, obj.normalize);
+    watch(os, obj.rate_limit);
 
     return os;
 }

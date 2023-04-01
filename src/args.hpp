@@ -13,6 +13,7 @@ class args {
     bool verbose;
     bool cleanup;
     bool normalize;
+    std::string rate_limit;
     fs::path output;
 
     args();

@@ -5,12 +5,13 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
-#define watch(os, x) os << std::left << std::setw(8) << #x ":" << x << std::endl;
+#define watch(os, x) os << std::left << std::setw(16) << #x ":" << x << std::endl;
 
 namespace mqr {
 using json = nlohmann::json;
 
-downloader::downloader(fs::path output) : lang("ru"), dest_dir(output) {}
+downloader::downloader(fs::path output, std::string& rate_limit)
+    : lang("ru"), dest_dir(output), max_rate(rate_limit) {}
 
 static std::string make_json_array(const std::string& str) {
     size_t index = 0;
@@ -72,7 +73,6 @@ void remove_images_in_dir(const downloader& obj) {
 }
 
 inline static bool isprint_ru(char c) {
-    // Dirty hack, but there is no other way
     int code = (int)(unsigned char)c;
 
     // lowercase + uppercase: абвгдеёжзийклмноп || рстуфхцчшщъыьэюя
@@ -90,6 +90,7 @@ static std::string filter_filename(const std::string& str) {
 
     for (; i < len; i++) {
         int code = (int)(unsigned char)str[i];
+
         // Exclude ' ? @ `
         if (code == 39 || code == 63 || code == 64 || code == 96) continue;
 
@@ -107,7 +108,7 @@ static std::string filter_filename(const std::string& str) {
         }
     }
 
-    // It was bad filename
+    // Bad filename
     if (fn == ".mp3") {
         srand(time(nullptr));
         fn = std::to_string(rand()) + fn;
@@ -129,7 +130,7 @@ void normalize_filenames(const downloader& obj) {
 }
 
 // TODO: add user-specific options to args parser
-constexpr char o_gen[] = "-i -r 8M --match-filter \"duration<=?600\" ";
+constexpr char o_gen[] = "-i --match-filter \"duration<=?600\" ";
 constexpr char o_prg[] = "-q --progress --no-warnings ";
 constexpr char o_prgt[] = "--progress-template \"'%(info.title)s' %(progress._default_template)s\" ";
 constexpr char o_out[] = "-q --progress --no-warnings ";
@@ -149,6 +150,7 @@ bool downloader::download(bool cleanup, bool normalize) {
         for (const auto& genre : genres) {
             std::string url = baseurl + chart + ":" + genre + ":" + lang + " ";
             std::string cmd = "yt-dlp " + url + o_gen + "--dump-json ";
+            if (!max_rate.empty()) cmd += "-r " + max_rate;
 
             std::cout << std::endl << chart << ":" << genre << " - Loading JSON info" << std::endl;
 
@@ -175,6 +177,7 @@ bool downloader::download(bool cleanup, bool normalize) {
             std::cout << chart << ":" << genre << " - Downloading " << count << " songs..." << std::endl;
             if (count) {
                 cmd = "yt-dlp " + url + o_gen + o_prg + o_prgt + o_out + o_pp;
+                if (!max_rate.empty()) cmd += "-r " + max_rate;
                 system((cmd + PIPE_TO_STDOUT).c_str());
             }
 
@@ -210,6 +213,7 @@ std::ostream& operator<<(std::ostream& os, const downloader& obj) {
     watch(os, o_prgt);
     watch(os, o_out);
     watch(os, o_pp);
+    watch(os, obj.max_rate);
 
     return os;
 }
