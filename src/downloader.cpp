@@ -37,7 +37,7 @@ static void dump_json_to_file(const json& json, const std::string& filename) {
     file.close();
 }
 
-std::string read_from_pipe(const std::string& cmd) {
+static std::string read_from_pipe(const std::string& cmd) {
     const std::string cmd_mod = cmd + PIPE_TO_STDOUT;
     FILE* pipe = popen(cmd_mod.c_str(), "r");
     if (!pipe) {
@@ -62,7 +62,7 @@ inline static bool is_compatible_extension(std::vector<std::string>& exts, fs::p
     return std::find(exts.begin(), exts.end(), file_ext) != exts.end();
 }
 
-void remove_images_in_dir(const downloader& obj) {
+static void remove_images_in_dir(const downloader& obj) {
     std::vector<std::string> extensions = {".png", ".jpg", ".part"};
 
     for (const fs::directory_entry& entry : fs::directory_iterator(obj.get_destination())) {
@@ -117,7 +117,7 @@ static std::string filter_filename(const std::string& str) {
     return fn;
 }
 
-void normalize_filenames(const downloader& obj) {
+static void normalize_filenames(const downloader& obj) {
     std::vector<std::string> extensions = {".mp3", ".wav", ".aac"};
 
     for (const fs::directory_entry& entry : fs::directory_iterator(obj.get_destination())) {
