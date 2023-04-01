@@ -1,6 +1,6 @@
 #include "args.hpp"
 
-#define watch(os, x) os << std::left << std::setw(16) << #x ":" << std::boolalpha << x << std::endl;
+#define watch(os, x) os << std::left << std::setw(24) << #x ":" << std::boolalpha << x << std::endl;
 
 namespace mqr {
 #define LW(w) std::left << std::setw(w)
@@ -22,11 +22,11 @@ bool args::parse(int argc, char** argv) {
             std::string opt = arg.substr(2);
 
             if (opt == "help") {
-                help();
+                help(argv[0]);
                 return false;
             } else {
                 std::cout << "Unknown option " << arg << std::endl;
-                help();
+                help(argv[0]);
                 return false;
             }
         }
@@ -37,14 +37,14 @@ bool args::parse(int argc, char** argv) {
 
             for (const auto& ch : opt) {
                 if (ch == 'h') {
-                    help();
+                    help(argv[0]);
                     return false;
                 } else if (ch == 'v') {
                     verbose = true;
                 } else if (ch == 'o') {
                     if (i + 1 >= argc) {
                         std::cout << "-o option without path" << std::endl;
-                        help();
+                        help(argv[0]);
                         return false;
                     }
 
@@ -55,7 +55,7 @@ bool args::parse(int argc, char** argv) {
                     } else {
                         std::cerr << arg_next << " doesn't exist or isn't a directory" << std::endl
                                   << std::endl;
-                        help();
+                        help(argv[0]);
                         return false;
                     }
 
@@ -67,21 +67,30 @@ bool args::parse(int argc, char** argv) {
                 } else if (ch == 'r') {
                     if (i + 1 >= argc) {
                         std::cout << "-r option without next arg" << std::endl;
-                        help();
+                        help(argv[0]);
                         return false;
                     }
 
                     rate_limit = argv[i + 1];
                     i++;
+                } else if (ch == 'd') {
+                    if (i + 1 >= argc) {
+                        std::cout << "-d option without next arg" << std::endl;
+                        help(argv[0]);
+                        return false;
+                    }
+
+                    duration_limit = argv[i + 1];
+                    i++;
                 } else {
                     std::cout << "Unknown option -" << ch << std::endl;
-                    help();
+                    help(argv[0]);
                     return false;
                 }
             }
         } else {
             std::cout << "Unknown arg " << arg << std::endl;
-            help();
+            help(argv[0]);
             return false;
         }
     }
@@ -93,13 +102,13 @@ void args::reset_options() {
     verbose = false;
     cleanup = false;
     normalize = false;
-    output = fs::current_path();
+    output = fs::current_path() / "scollector";
 }
 
-void args::help() {
+void args::help(char* binary) {
     constexpr int w = 16;
 
-    std::cout << "scollector" << std::endl << std::endl;
+    std::cout << "Usage: " << binary << std::endl << std::endl;
     std::cout << "options:" << std::endl;
 
     std::cout << LW(w) << " -h,--help"
@@ -123,6 +132,9 @@ void args::help() {
 
     std::cout << LW(w) << " -r"
               << "maximum download rate in bytes per second, e.g. 50K or 4.2M" << std::endl;
+
+    std::cout << LW(w) << " -d"
+              << "maximum song duration in seconds, e.g. 600 or 130" << std::endl;
 }
 
 std::ostream& operator<<(std::ostream& os, const args& obj) {
@@ -132,6 +144,7 @@ std::ostream& operator<<(std::ostream& os, const args& obj) {
     watch(os, obj.cleanup);
     watch(os, obj.normalize);
     watch(os, obj.rate_limit);
+    watch(os, obj.duration_limit);
 
     return os;
 }

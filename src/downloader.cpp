@@ -5,13 +5,13 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
-#define watch(os, x) os << std::left << std::setw(16) << #x ":" << x << std::endl;
+#define watch(os, x) os << std::left << std::setw(24) << #x ":" << x << std::endl;
 
 namespace mqr {
 using json = nlohmann::json;
 
-downloader::downloader(fs::path output, std::string& rate_limit)
-    : lang("ru"), dest_dir(output), max_rate(rate_limit) {}
+downloader::downloader(fs::path output, std::string& rate_limit, std::string& duration_limit)
+    : lang("ru"), dest_dir(output), max_rate(rate_limit), max_duration(duration_limit) {}
 
 static std::string make_json_array(const std::string& str) {
     size_t index = 0;
@@ -129,8 +129,7 @@ void normalize_filenames(const downloader& obj) {
     }
 }
 
-// TODO: add user-specific options to args parser
-constexpr char o_gen[] = "-i --match-filter \"duration<=?600\" ";
+constexpr char o_gen[] = "-i ";
 constexpr char o_prg[] = "-q --progress --no-warnings ";
 constexpr char o_prgt[] = "--progress-template \"'%(info.title)s' %(progress._default_template)s\" ";
 constexpr char o_out[] = "-q --progress --no-warnings ";
@@ -150,6 +149,7 @@ bool downloader::download(bool cleanup, bool normalize) {
         for (const auto& genre : genres) {
             std::string url = baseurl + chart + ":" + genre + ":" + lang + " ";
             std::string cmd = "yt-dlp " + url + o_gen + "--dump-json ";
+            if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
             if (!max_rate.empty()) cmd += "-r " + max_rate;
 
             std::cout << std::endl << chart << ":" << genre << " - Loading JSON info" << std::endl;
@@ -177,7 +177,9 @@ bool downloader::download(bool cleanup, bool normalize) {
             std::cout << chart << ":" << genre << " - Downloading " << count << " songs..." << std::endl;
             if (count) {
                 cmd = "yt-dlp " + url + o_gen + o_prg + o_prgt + o_out + o_pp;
+                if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
                 if (!max_rate.empty()) cmd += "-r " + max_rate;
+
                 system((cmd + PIPE_TO_STDOUT).c_str());
             }
 
@@ -214,6 +216,7 @@ std::ostream& operator<<(std::ostream& os, const downloader& obj) {
     watch(os, o_out);
     watch(os, o_pp);
     watch(os, obj.max_rate);
+    watch(os, obj.max_duration);
 
     return os;
 }

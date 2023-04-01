@@ -14,13 +14,14 @@ class args {
     bool cleanup;
     bool normalize;
     std::string rate_limit;
+    std::string duration_limit;
     fs::path output;
 
     args();
     void reset_options();
 
     bool parse(int argc, char** argv);
-    void help();
+    void help(char* binary);
 
     friend std::ostream& operator<<(std::ostream& os, const args& obj);
 };
