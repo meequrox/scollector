@@ -51,7 +51,7 @@ bool args::parse(int argc, char** argv) {
                     std::string arg_next = argv[i + 1];
                     if (fs::exists(arg_next) && fs::is_directory(arg_next)) {
                         output = arg_next;
-                        output = fs::absolute(output.lexically_normal()) / "scollector";
+                        output = fs::absolute(output.lexically_normal()) / "scollector_dl";
                     } else {
                         std::cerr << arg_next << " doesn't exist or isn't a directory" << std::endl
                                   << std::endl;
@@ -102,7 +102,7 @@ void args::reset_options() {
     verbose = false;
     cleanup = false;
     normalize = false;
-    output = fs::current_path() / "scollector";
+    output = fs::current_path() / "scollector_dl";
 }
 
 void args::help(char* binary) {
