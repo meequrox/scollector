@@ -133,16 +133,16 @@ bool downloader::download(bool cleanup) {
 }
 
 std::ostream& operator<<(std::ostream& os, const downloader& obj) {
-    os << "Downloader output directory: " << obj.get_destination() << std::endl;
+    os << "Downloader output directory: " << obj.dest_dir << std::endl;
 
     os << "Downloader charts:";
-    for (const auto& chart : obj.get_charts()) {
+    for (const auto& chart : obj.charts) {
         os << " " << chart;
     }
     os << std::endl;
 
     os << "Downloader genres:";
-    for (const auto& genre : obj.get_genres()) {
+    for (const auto& genre : obj.genres) {
         os << " " << genre;
     }
     os << std::endl;
