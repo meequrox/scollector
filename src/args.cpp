@@ -15,33 +15,59 @@ bool args::parse(int argc, char** argv) {
         }
 
         std::string arg = argv[i];
-        if (arg == "-h" || arg == "--help") {
-            help();
-            return false;
+        std::string opt_type = arg.substr(0, 2);
+        if (opt_type == "--") {
+            std::string opt = arg.substr(2);
+
+            if (opt == "help") {
+                help();
+                return false;
+            } else {
+                std::cout << "Unknown option " << arg << std::endl;
+                help();
+                return false;
+            }
         }
 
-        if (arg == "-v")
-            verbose = true;
-        else if (arg == "-o") {
-            if (i + 1 >= argc) {
-                help();
-                return false;
-            }
+        opt_type = arg.substr(0, 1);
+        if (opt_type == "-") {
+            std::string opt = arg.substr(1);
 
-            std::string arg_next = argv[i + 1];
-            if (fs::exists(arg_next) && fs::is_directory(arg_next)) {
-                output = arg_next;
-                output = fs::absolute(output.lexically_normal());
-            } else {
-                std::cerr << arg_next << " doesn't exist or isn't a directory" << std::endl << std::endl;
-                help();
-                return false;
-            }
+            for (const auto& ch : opt) {
+                if (ch == 'h') {
+                    help();
+                    return false;
+                } else if (ch == 'v') {
+                    verbose = true;
+                } else if (ch == 'o') {
+                    if (i + 1 >= argc) {
+                        std::cout << "-o option without path" << std::endl;
+                        help();
+                        return false;
+                    }
 
-            i++;
-        } else if (arg == "-c")
-            cleanup = true;
-        else {
+                    std::string arg_next = argv[i + 1];
+                    if (fs::exists(arg_next) && fs::is_directory(arg_next)) {
+                        output = arg_next;
+                        output = fs::absolute(output.lexically_normal());
+                    } else {
+                        std::cerr << arg_next << " doesn't exist or isn't a directory" << std::endl
+                                  << std::endl;
+                        help();
+                        return false;
+                    }
+
+                    i++;
+                } else if (ch == 'c') {
+                    cleanup = true;
+                } else {
+                    std::cout << "Unknown option -" << ch << std::endl;
+                    help();
+                    return false;
+                }
+            }
+        } else {
+            std::cout << "Unknown arg " << arg << std::endl;
             help();
             return false;
         }
@@ -68,7 +94,7 @@ void args::help() {
     std::cout << LW(w) << " -v"
               << "print additional info" << std::endl;
 
-    std::cout << LW(w) << " -o"
+    std::cout << LW(w) << " -o PATH"
               << "set output directory" << std::endl;
 
     std::cout << LW(w) << " -c"
