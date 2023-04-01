@@ -81,7 +81,7 @@ inline static bool isprint_ru(char c) {
     return false;
 }
 
-static std::string filter_filename(const std::string str) {
+static std::string filter_filename(const std::string& str) {
     std::string fn;
     size_t len = str.length();
 
@@ -137,6 +137,7 @@ constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
 
 bool downloader::download(bool cleanup, bool normalize) {
     fs::path prev_path = fs::current_path();
+    fs::create_directory(dest_dir);
     fs::current_path(dest_dir);
 
     bool success = true;

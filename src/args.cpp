@@ -51,7 +51,7 @@ bool args::parse(int argc, char** argv) {
                     std::string arg_next = argv[i + 1];
                     if (fs::exists(arg_next) && fs::is_directory(arg_next)) {
                         output = arg_next;
-                        output = fs::absolute(output.lexically_normal());
+                        output = fs::absolute(output.lexically_normal()) / "scollector";
                     } else {
                         std::cerr << arg_next << " doesn't exist or isn't a directory" << std::endl
                                   << std::endl;
@@ -99,17 +99,17 @@ void args::help() {
               << "print additional info" << std::endl;
 
     std::cout << LW(w) << " -o PATH"
-              << "set output directory" << std::endl;
+              << "set path where scollector directory will be created" << std::endl;
 
     std::cout << LW(w) << " -c"
               << "yt-dlp may leave some images and .part files in directory" << std::endl;
     std::cout << LW(w) << ""
-              << "with this option ALL {.png, .jpg, .part} files will be deleted" << std::endl;
+              << "with this option {.png, .jpg, .part} files will be deleted" << std::endl;
 
     std::cout << LW(w) << " -n"
               << "normalize song filenames in directory" << std::endl;
     std::cout << LW(w) << ""
-              << "with this option ALL {.mp3, .wav, .aac} files will be renamed" << std::endl;
+              << "with this option {.mp3, .wav, .aac} files will be renamed" << std::endl;
 }
 
 std::ostream& operator<<(std::ostream& os, const args& obj) {
