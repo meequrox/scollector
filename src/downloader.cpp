@@ -1,13 +1,16 @@
 #include "downloader.hpp"
 
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <nlohmann/json.hpp>
+
+#define watch(os, x) os << std::left << std::setw(8) << #x ":" << x << std::endl;
 
 namespace mqr {
 using json = nlohmann::json;
 
-downloader::downloader() : lang("ru") {}
+downloader::downloader(fs::path output) : lang("ru"), dest_dir(output) {}
 
 static std::string make_json_array(const std::string& str) {
     size_t index = 0;
@@ -51,22 +54,16 @@ std::string read_from_pipe(const std::string& cmd) {
     return dest;
 }
 
-bool downloader::download(fs::path output, bool verbose) {
-    if (verbose) {
-        std::cout << "Downloader output directory: " << output << std::endl;
-        print_charts();
-        print_genres();
-    }
+// TODO: add user-specific options to args parser
+constexpr char o_gen[] = "-i -r 8M --match-filter \"duration<=?600\" ";
+constexpr char o_prg[] = "-q --progress --no-warnings ";
+constexpr char o_prgt[] = "--progress-template \"'%(info.title)s' %(progress._default_template)s\" ";
+constexpr char o_out[] = "-q --progress --no-warnings ";
+constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
 
-    // TODO: add user-specific options to args parser
-    constexpr char o_gen[] = "-i -r 8M --match-filter \"duration<=?600\" ";
-    constexpr char o_prg[] = "-q --progress --no-warnings ";
-    constexpr char o_prgt[] = "--progress-template \"'%(info.title)s' %(progress._default_template)s\" ";
-    constexpr char o_out[] = "-q --progress --no-warnings ";
-    constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
-
+bool downloader::download() {
     fs::path prev_path = fs::current_path();
-    fs::current_path(output);
+    fs::current_path(dest_dir);
 
     bool success = true;
     constexpr char baseurl[] = "https://soundcloud.com/discover/sets/charts-";
@@ -79,7 +76,6 @@ bool downloader::download(fs::path output, bool verbose) {
             std::string cmd = "yt-dlp " + url + o_gen + "--dump-json ";
 
             std::cout << std::endl << chart << ":" << genre << " - Loading JSON info" << std::endl;
-            if (verbose) std::cout << cmd << std::endl;
 
             std::string json_str = read_from_pipe(cmd);
             if (json_str.empty()) {
@@ -118,19 +114,34 @@ bool downloader::download(fs::path output, bool verbose) {
     return success;
 }
 
-void downloader::print_charts() {
-    std::cout << "Downloader charts:";
-    for (const auto& chart : charts) {
-        std::cout << " " << chart;
+std::ostream& operator<<(std::ostream& os, const downloader& obj) {
+    os << "Downloader output directory: " << obj.get_destination() << std::endl;
+
+    os << "Downloader charts:";
+    for (const auto& chart : obj.get_charts()) {
+        os << " " << chart;
     }
-    std::cout << std::endl;
+    os << std::endl;
+
+    os << "Downloader genres:";
+    for (const auto& genre : obj.get_genres()) {
+        os << " " << genre;
+    }
+    os << std::endl;
+
+    os << "Downloader options:" << std::endl;
+    watch(os, o_gen);
+    watch(os, o_prg);
+    watch(os, o_prgt);
+    watch(os, o_out);
+    watch(os, o_pp);
+
+    return os;
 }
 
-void downloader::print_genres() {
-    std::cout << "Downloader genres:";
-    for (const auto& genre : genres) {
-        std::cout << " " << genre;
-    }
-    std::cout << std::endl;
-}
+const std::vector<std::string> downloader::get_charts() const { return charts; }
+
+const std::vector<std::string> downloader::get_genres() const { return genres; }
+
+const fs::path downloader::get_destination() const { return dest_dir; }
 }  // namespace mqr

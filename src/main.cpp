@@ -13,16 +13,17 @@ int main(int argc, char** argv) {
     mqr::args args;
     if (!args.parse(argc, argv)) return EXIT_FAILURE;
 
-    mqr::downloader dl;
+    mqr::downloader dl(args.output);
 
     if (args.verbose) {
         std::cout << "yt-dlp version: ";
         std::cout.flush();
         system("yt-dlp --version");
+
+        std::cout << dl;
     }
 
-    if (!dl.download(args.output, args.verbose))
-        std::cout << "There were some errors while downloading" << std::endl;
+    if (!dl.download()) std::cout << "There were some errors while downloading" << std::endl;
 
     return EXIT_SUCCESS;
 }

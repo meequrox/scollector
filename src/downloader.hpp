@@ -18,16 +18,19 @@ namespace fs = std::filesystem;
 
 class downloader {
    private:
-    std::string lang;
-    std::vector<std::string> charts = {"top", "trending"};
-    std::vector<std::string> genres = {"danceedm", "electronic", "hiphoprap", "house"};
+    fs::path dest_dir;
+    const std::string lang;
+    const std::vector<std::string> charts = {"top", "trending"};
+    const std::vector<std::string> genres = {"danceedm", "electronic", "hiphoprap", "house"};
 
    public:
-    downloader();
-    bool download(fs::path output, bool verbose);
+    downloader(fs::path output);
+    bool download();
 
-    void print_charts();
-    void print_genres();
+    friend std::ostream& operator<<(std::ostream& os, const downloader& obj);
+    const std::vector<std::string> get_charts() const;
+    const std::vector<std::string> get_genres() const;
+    const fs::path get_destination() const;
 };
 }  // namespace mqr
 
