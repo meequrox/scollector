@@ -1,6 +1,5 @@
 #include "downloader.hpp"
 
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
@@ -19,24 +18,24 @@
 
 namespace mqr {
 using json = nlohmann::json;
-namespace fs = std::filesystem;
 
 downloader::downloader() : lang("ru") {}
 
-bool downloader::download(bool verbose) {
+bool downloader::download(fs::path output, bool verbose) {
     if (verbose) {
         print_charts();
         print_genres();
     }
 
+    fs::path prev_path = fs::current_path();
+    fs::current_path(output);
+
+    bool success = true;
+
     for (const auto& chart : charts) {
-        fs::create_directory(chart);
-        fs::current_path(chart);
+        if (!success) break;
 
         for (const auto& genre : genres) {
-            fs::create_directory(genre);
-            fs::current_path(genre);
-
             std::string url = SC_BASEURL + chart + ":" + genre + ":" + lang + " ";
             std::string cmd = "yt-dlp " + url + OPTS_ALL + "--dump-json ";
 
@@ -47,7 +46,9 @@ bool downloader::download(bool verbose) {
             if (!pipe) {
                 std::cerr << "Error: failed to open pipe" << std::endl;
                 std::cerr << "Command: " << cmd << std::endl;
-                return false;
+
+                success = false;
+                break;
             }
 
             std::string output;
@@ -88,10 +89,12 @@ bool downloader::download(bool verbose) {
             std::cout << "Finish " << chart << ":" << genre << " download" << std::endl;
             fs::current_path("..");
         }
+
         fs::current_path("..");
     }
 
-    return true;
+    fs::current_path(prev_path);
+    return success;
 }
 
 void downloader::print_charts() {

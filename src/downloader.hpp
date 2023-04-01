@@ -1,6 +1,7 @@
 #ifndef DOWNLOADER_HPP
 #define DOWNLOADER_HPP
 
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,8 @@
 #define PIPE_TO_STDOUT " 2>&1 "
 
 namespace mqr {
+namespace fs = std::filesystem;
+
 class downloader {
    private:
     std::string lang;
@@ -21,7 +24,7 @@ class downloader {
 
    public:
     downloader();
-    bool download(bool verbose);
+    bool download(fs::path output, bool verbose);
 
     void print_charts();
     void print_genres();

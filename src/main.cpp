@@ -23,7 +23,8 @@ int main(int argc, char** argv) {
         std::cout << "Output directory: " << args.output << std::endl;
     }
 
-    if (!dl.download(args.verbose)) std::cout << "There were some errors while downloading" << std::endl;
+    if (!dl.download(args.output, args.verbose))
+        std::cout << "There were some errors while downloading" << std::endl;
 
     return EXIT_SUCCESS;
 }
