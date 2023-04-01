@@ -5,16 +5,18 @@
 #include <nlohmann/json.hpp>
 
 // TODO: add user-specific options to args parser
-#define OPTS_GEN "--ignore-errors "
-#define OPTS_VID "--match-filter \"duration<=?600\" "
-#define OPTS_DL "-r 8M "
-#define OPTS_FS "--force-overwrites -o \"%(uploader)s - %(title)s.%(ext)s\" --windows-filenames "
-#define OPTS_VRB "--no-warnings "
-#define OPTS_PP "--embed-thumbnail --add-metadata "
+#define OPTS_GEN "-i -r 8M --match-filter \"duration<=?600\" "
 
-#define OPTS_ALL OPTS_GEN OPTS_VID OPTS_DL OPTS_FS OPTS_VRB OPTS_PP
+#define OPTS_PRG "-q --progress --no-warnings "
+#define OPTS_PRGT                                                           \
+    "--progress-template \"#%(info.playlist_index)s \"%(info.uploader)s - " \
+    "%(info.title)s.%(info.ext)s\" %(progress._default_template)s\" "
 
-#define SC_BASEURL "https://soundcloud.com/discover/sets/charts-"
+#define OPTS_OUT "-o \"%(uploader)s - %(title)s.%(ext)s\" --windows-filenames "
+#define OPTS_PP "--embed-thumbnail --embed-metadata "
+
+#define JSON_OPTS OPTS_GEN
+#define DL_OPTS OPTS_GEN OPTS_PRG OPTS_PRGT OPTS_OUT OPTS_PP
 
 namespace mqr {
 using json = nlohmann::json;
@@ -25,16 +27,18 @@ static std::string make_json_array(const std::string& str) {
     size_t index = 0;
     std::string ja_str = str;
 
+    const std::string substr = "}}\n{\"id\":";
+    const std::string new_substr = "}},{\"id\":";
+    const size_t offset = substr.length();
     while (true) {
-        index = ja_str.find("}}\n{", index);
+        index = ja_str.find(substr, index);
         if (index == std::string::npos) break;
 
-        ja_str.replace(index, std::size("}}\n{\"id\":"), "}}, {\"id\":");
-        index += std::size("}}\n{\"id\":");
+        ja_str.replace(index, offset, new_substr);
+        index += offset;
     }
 
-    ja_str = "[" + ja_str + "]";
-    return ja_str;
+    return "[" + ja_str + "]";
 }
 
 static void dump_json_to_file(const json& json, const std::string& filename) {
@@ -72,13 +76,14 @@ bool downloader::download(fs::path output, bool verbose) {
     fs::current_path(output);
 
     bool success = true;
+    constexpr char baseurl[] = "https://soundcloud.com/discover/sets/charts-";
 
     for (const auto& chart : charts) {
         if (!success) break;
 
         for (const auto& genre : genres) {
-            std::string url = SC_BASEURL + chart + ":" + genre + ":" + lang + " ";
-            std::string cmd = "yt-dlp " + url + OPTS_ALL + "--dump-json ";
+            std::string url = baseurl + chart + ":" + genre + ":" + lang + " ";
+            std::string cmd = "yt-dlp " + url + JSON_OPTS + "--dump-json ";
 
             std::cout << std::endl << chart << ":" << genre << " - Loading JSON info" << std::endl;
             if (verbose) std::cout << cmd << std::endl;
@@ -105,7 +110,7 @@ bool downloader::download(fs::path output, bool verbose) {
 
             std::cout << chart << ":" << genre << " - Downloading " << count << " songs..." << std::endl;
             if (count) {
-                cmd = "yt-dlp " + url + OPTS_ALL;
+                cmd = "yt-dlp " + url + DL_OPTS;
                 system((cmd + PIPE_TO_STDOUT).c_str());
             }
 
