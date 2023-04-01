@@ -39,7 +39,9 @@ bool args::parse(int argc, char** argv) {
             }
 
             i++;
-        } else {
+        } else if (arg == "-c")
+            cleanup = true;
+        else {
             help();
             return false;
         }
@@ -50,17 +52,28 @@ bool args::parse(int argc, char** argv) {
 
 void args::reset_options() {
     verbose = false;
+    cleanup = false;
     output = fs::current_path();
 }
 
 void args::help() {
+    constexpr int w = 16;
+
     std::cout << "scollector" << std::endl << std::endl;
     std::cout << "options:" << std::endl;
-    std::cout << LW(16) << " -h,--help"
+
+    std::cout << LW(w) << " -h,--help"
               << "print this help message" << std::endl;
-    std::cout << LW(16) << " -v"
+
+    std::cout << LW(w) << " -v"
               << "print additional info" << std::endl;
-    std::cout << LW(16) << " -o"
+
+    std::cout << LW(w) << " -o"
               << "set output directory" << std::endl;
+
+    std::cout << LW(w) << " -c"
+              << "yt-dlp may leave some images and .part files in directory" << std::endl;
+    std::cout << LW(w) << ""
+              << "with this option ALL {.png, .jpg, .part} files will be deleted" << std::endl;
 }
 }  // namespace mqr

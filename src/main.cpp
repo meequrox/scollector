@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
         std::cout << dl;
     }
 
-    if (!dl.download()) std::cout << "There were some errors while downloading" << std::endl;
+    if (!dl.download(args.cleanup)) std::cout << "There were some errors while downloading" << std::endl;
 
     return EXIT_SUCCESS;
 }

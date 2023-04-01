@@ -54,6 +54,23 @@ std::string read_from_pipe(const std::string& cmd) {
     return dest;
 }
 
+inline static bool is_compatible_extension(std::vector<std::string>& exts, fs::path file) {
+    std::string file_ext = file.extension().generic_string();
+    std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
+
+    return std::find(exts.begin(), exts.end(), file_ext) != exts.end();
+}
+
+void remove_images_in_dir(const downloader& obj) {
+    std::vector<std::string> extensions = {".png", ".jpg", ".part"};
+
+    for (const fs::directory_entry& entry : fs::directory_iterator(obj.get_destination())) {
+        if (entry.is_regular_file() && is_compatible_extension(extensions, entry.path())) {
+            fs::remove(entry.path());
+        }
+    }
+}
+
 // TODO: add user-specific options to args parser
 constexpr char o_gen[] = "-i -r 8M --match-filter \"duration<=?600\" ";
 constexpr char o_prg[] = "-q --progress --no-warnings ";
@@ -61,7 +78,7 @@ constexpr char o_prgt[] = "--progress-template \"'%(info.title)s' %(progress._de
 constexpr char o_out[] = "-q --progress --no-warnings ";
 constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
 
-bool downloader::download() {
+bool downloader::download(bool cleanup) {
     fs::path prev_path = fs::current_path();
     fs::current_path(dest_dir);
 
@@ -107,7 +124,8 @@ bool downloader::download() {
         }
     }
 
-    // TODO: Delete images artifacts
+    if (cleanup) remove_images_in_dir(*this);
+
     // TODO: Normalize songs filenames (*.mp3 *.wav *.aac)
 
     fs::current_path(prev_path);

@@ -25,12 +25,13 @@ class downloader {
 
    public:
     downloader(fs::path output);
-    bool download();
+    bool download(bool remove_images);
 
-    friend std::ostream& operator<<(std::ostream& os, const downloader& obj);
     const std::vector<std::string> get_charts() const;
     const std::vector<std::string> get_genres() const;
     const fs::path get_destination() const;
+
+    friend std::ostream& operator<<(std::ostream& os, const downloader& obj);
 };
 }  // namespace mqr
 

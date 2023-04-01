@@ -11,6 +11,7 @@ namespace fs = std::filesystem;
 class args {
    public:
     bool verbose;
+    bool cleanup;
     fs::path output;
 
     args();
