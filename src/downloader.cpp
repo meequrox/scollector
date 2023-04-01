@@ -4,20 +4,6 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
-// TODO: add user-specific options to args parser
-#define OPTS_GEN "-i -r 8M --match-filter \"duration<=?600\" "
-
-#define OPTS_PRG "-q --progress --no-warnings "
-#define OPTS_PRGT                                                           \
-    "--progress-template \"#%(info.playlist_index)s \"%(info.uploader)s - " \
-    "%(info.title)s.%(info.ext)s\" %(progress._default_template)s\" "
-
-#define OPTS_OUT "-o \"%(uploader)s - %(title)s.%(ext)s\" --windows-filenames "
-#define OPTS_PP "--embed-thumbnail --embed-metadata "
-
-#define JSON_OPTS OPTS_GEN
-#define DL_OPTS OPTS_GEN OPTS_PRG OPTS_PRGT OPTS_OUT OPTS_PP
-
 namespace mqr {
 using json = nlohmann::json;
 
@@ -72,6 +58,13 @@ bool downloader::download(fs::path output, bool verbose) {
         print_genres();
     }
 
+    // TODO: add user-specific options to args parser
+    constexpr char o_gen[] = "-i -r 8M --match-filter \"duration<=?600\" ";
+    constexpr char o_prg[] = "-q --progress --no-warnings ";
+    constexpr char o_prgt[] = "--progress-template \"'%(info.title)s' %(progress._default_template)s\" ";
+    constexpr char o_out[] = "-q --progress --no-warnings ";
+    constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
+
     fs::path prev_path = fs::current_path();
     fs::current_path(output);
 
@@ -83,7 +76,7 @@ bool downloader::download(fs::path output, bool verbose) {
 
         for (const auto& genre : genres) {
             std::string url = baseurl + chart + ":" + genre + ":" + lang + " ";
-            std::string cmd = "yt-dlp " + url + JSON_OPTS + "--dump-json ";
+            std::string cmd = "yt-dlp " + url + o_gen + "--dump-json ";
 
             std::cout << std::endl << chart << ":" << genre << " - Loading JSON info" << std::endl;
             if (verbose) std::cout << cmd << std::endl;
@@ -110,13 +103,16 @@ bool downloader::download(fs::path output, bool verbose) {
 
             std::cout << chart << ":" << genre << " - Downloading " << count << " songs..." << std::endl;
             if (count) {
-                cmd = "yt-dlp " + url + DL_OPTS;
+                cmd = "yt-dlp " + url + o_gen + o_prg + o_prgt + o_out + o_pp;
                 system((cmd + PIPE_TO_STDOUT).c_str());
             }
 
             std::cout << chart << ":" << genre << " - Download finished (" << count << ")" << std::endl;
         }
     }
+
+    // TODO: Delete images artifacts
+    // TODO: Normalize songs filenames (*.mp3 *.wav *.aac)
 
     fs::current_path(prev_path);
     return success;
