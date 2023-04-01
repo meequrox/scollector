@@ -25,7 +25,7 @@ class downloader {
 
    public:
     downloader(fs::path output);
-    bool download(bool remove_images);
+    bool download(bool cleanup, bool normalize);
 
     const std::vector<std::string> get_charts() const;
     const std::vector<std::string> get_genres() const;

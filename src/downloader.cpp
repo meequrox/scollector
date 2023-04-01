@@ -71,6 +71,63 @@ void remove_images_in_dir(const downloader& obj) {
     }
 }
 
+inline static bool isprint_ru(char c) {
+    // Dirty hack, but there is no other way
+    int code = (int)(unsigned char)c;
+
+    // lowercase + uppercase: абвгдеёжзийклмноп || рстуфхцчшщъыьэюя
+    if ((code >= 176 && code <= 191) || (code >= 128 && code <= 175)) return true;
+
+    return false;
+}
+
+static std::string filter_filename(const std::string str) {
+    std::string fn;
+    size_t len = str.length();
+
+    int i = 0;
+    while (str[i] == ' ') i++;  // ltrim whitespace
+
+    for (; i < len; i++) {
+        int code = (int)(unsigned char)str[i];
+        // Exclude ' ? @ `
+        if (code == 39 || code == 63 || code == 64 || code == 96) continue;
+
+        if ((code == 208 || code == 209) && i + 1 < len && isprint_ru(str[i + 1])) {
+            // Next char is in RU alphabet
+            fn += str[i];
+            fn += str[i + 1];
+            i++;
+        } else if (code == 32 && i > 0 && fn[fn.length() - 1] != 32) {
+            // Space: avoid doubles
+            fn += str[i];
+        } else if (code >= 33 && code <= 127) {
+            // Other ASCII chars
+            fn += str[i];
+        }
+    }
+
+    // It was bad filename
+    if (fn == ".mp3") {
+        srand(time(nullptr));
+        fn = std::to_string(rand()) + fn;
+    }
+
+    return fn;
+}
+
+void normalize_filenames(const downloader& obj) {
+    std::vector<std::string> extensions = {".mp3", ".wav", ".aac"};
+
+    for (const fs::directory_entry& entry : fs::directory_iterator(obj.get_destination())) {
+        if (entry.is_regular_file() && is_compatible_extension(extensions, entry.path())) {
+            std::string from = entry.path().filename().generic_string();
+            std::string to = filter_filename(from);
+            fs::rename(from, to);
+        }
+    }
+}
+
 // TODO: add user-specific options to args parser
 constexpr char o_gen[] = "-i -r 8M --match-filter \"duration<=?600\" ";
 constexpr char o_prg[] = "-q --progress --no-warnings ";
@@ -78,7 +135,7 @@ constexpr char o_prgt[] = "--progress-template \"'%(info.title)s' %(progress._de
 constexpr char o_out[] = "-q --progress --no-warnings ";
 constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
 
-bool downloader::download(bool cleanup) {
+bool downloader::download(bool cleanup, bool normalize) {
     fs::path prev_path = fs::current_path();
     fs::current_path(dest_dir);
 
@@ -125,8 +182,7 @@ bool downloader::download(bool cleanup) {
     }
 
     if (cleanup) remove_images_in_dir(*this);
-
-    // TODO: Normalize songs filenames (*.mp3 *.wav *.aac)
+    if (normalize) normalize_filenames(*this);
 
     fs::current_path(prev_path);
     return success;

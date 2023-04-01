@@ -12,6 +12,7 @@ class args {
    public:
     bool verbose;
     bool cleanup;
+    bool normalize;
     fs::path output;
 
     args();

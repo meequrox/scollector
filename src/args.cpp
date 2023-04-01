@@ -62,6 +62,8 @@ bool args::parse(int argc, char** argv) {
                     i++;
                 } else if (ch == 'c') {
                     cleanup = true;
+                } else if (ch == 'n') {
+                    normalize = true;
                 } else {
                     std::cout << "Unknown option -" << ch << std::endl;
                     help();
@@ -103,6 +105,11 @@ void args::help() {
               << "yt-dlp may leave some images and .part files in directory" << std::endl;
     std::cout << LW(w) << ""
               << "with this option ALL {.png, .jpg, .part} files will be deleted" << std::endl;
+
+    std::cout << LW(w) << " -n"
+              << "normalize song filenames in directory" << std::endl;
+    std::cout << LW(w) << ""
+              << "with this option ALL {.mp3, .wav, .aac} files will be renamed" << std::endl;
 }
 
 std::ostream& operator<<(std::ostream& os, const args& obj) {
@@ -110,6 +117,7 @@ std::ostream& operator<<(std::ostream& os, const args& obj) {
     watch(os, obj.verbose);
     watch(os, obj.output);
     watch(os, obj.cleanup);
+    watch(os, obj.normalize);
 
     return os;
 }
