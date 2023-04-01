@@ -19,8 +19,6 @@ int main(int argc, char** argv) {
         std::cout << "yt-dlp version: ";
         std::cout.flush();
         system("yt-dlp --version");
-
-        std::cout << "Output directory: " << args.output << std::endl;
     }
 
     if (!dl.download(args.output, args.verbose))

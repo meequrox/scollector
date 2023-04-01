@@ -21,8 +21,49 @@ using json = nlohmann::json;
 
 downloader::downloader() : lang("ru") {}
 
+static std::string make_json_array(const std::string& str) {
+    size_t index = 0;
+    std::string ja_str = str;
+
+    while (true) {
+        index = ja_str.find("}}\n{", index);
+        if (index == std::string::npos) break;
+
+        ja_str.replace(index, std::size("}}\n{\"id\":"), "}}, {\"id\":");
+        index += std::size("}}\n{\"id\":");
+    }
+
+    ja_str = "[" + ja_str + "]";
+    return ja_str;
+}
+
+static void dump_json_to_file(const json& json, const std::string& filename) {
+    std::ofstream file(filename);
+    file << json.dump();
+    file.close();
+}
+
+std::string read_from_pipe(const std::string& cmd) {
+    const std::string cmd_mod = cmd + PIPE_TO_STDOUT;
+    FILE* pipe = popen(cmd_mod.c_str(), "r");
+    if (!pipe) {
+        std::cerr << "Error: failed to open pipe" << std::endl;
+        std::cerr << "Command: " << cmd_mod << std::endl;
+
+        return "";
+    }
+
+    std::string dest;
+    char buffer[1024] = {'\0'};
+    while (fgets(buffer, 1024, pipe)) dest += buffer;
+    pclose(pipe);
+
+    return dest;
+}
+
 bool downloader::download(fs::path output, bool verbose) {
     if (verbose) {
+        std::cout << "Downloader output directory: " << output << std::endl;
         print_charts();
         print_genres();
     }
@@ -39,58 +80,37 @@ bool downloader::download(fs::path output, bool verbose) {
             std::string url = SC_BASEURL + chart + ":" + genre + ":" + lang + " ";
             std::string cmd = "yt-dlp " + url + OPTS_ALL + "--dump-json ";
 
-            std::cout << std::endl << "Loading " << chart << ":" << genre << ":" << std::endl;
+            std::cout << std::endl << chart << ":" << genre << " - Loading JSON info" << std::endl;
             if (verbose) std::cout << cmd << std::endl;
 
-            FILE* pipe = popen((cmd + PIPE_TO_STDOUT).c_str(), "r");
-            if (!pipe) {
-                std::cerr << "Error: failed to open pipe" << std::endl;
-                std::cerr << "Command: " << cmd << std::endl;
-
+            std::string json_str = read_from_pipe(cmd);
+            if (json_str.empty()) {
                 success = false;
                 break;
             }
 
-            std::string output;
-
-            char buffer[1024] = {'\0'};
-            while (fgets(buffer, 1024, pipe)) output += buffer;
-            pclose(pipe);
-
-            // Fix JSON
-            size_t index = 0;
-            while (true) {
-                index = output.find("}}\n{", index);
-                if (index == std::string::npos) break;
-
-                output.replace(index, std::size("}}\n{\"id\":"), "}}, {\"id\":");
-                index += std::size("}}\n{\"id\":");
-            }
-            output = "[" + output + "]";
-
-            json songs = json::parse(output);
-
-            // TEMP
-            std::ofstream json_dump(chart + "." + genre);
-            json_dump << songs.dump();
-            json_dump.close();
+            json_str = make_json_array(json_str);
+            json songs = json::parse(json_str);
+            dump_json_to_file(songs, chart + "." + genre);  // TEMP
 
             url.clear();
+            size_t count = 0;
             for (const auto& song : songs) {
                 // TODO: check song id in DB
 
                 url += song["webpage_url"];
                 url += " ";
+                count++;
             }
 
-            cmd = "yt-dlp " + url + OPTS_ALL;
-            system((cmd + PIPE_TO_STDOUT).c_str());
+            std::cout << chart << ":" << genre << " - Downloading " << count << " songs..." << std::endl;
+            if (count) {
+                cmd = "yt-dlp " + url + OPTS_ALL;
+                system((cmd + PIPE_TO_STDOUT).c_str());
+            }
 
-            std::cout << "Finish " << chart << ":" << genre << " download" << std::endl;
-            fs::current_path("..");
+            std::cout << chart << ":" << genre << " - Download finished (" << count << ")" << std::endl;
         }
-
-        fs::current_path("..");
     }
 
     fs::current_path(prev_path);
