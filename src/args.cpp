@@ -1,5 +1,7 @@
 #include "args.hpp"
 
+#define watch(os, x) os << std::left << std::setw(16) << #x ":" << std::boolalpha << x << std::endl;
+
 namespace mqr {
 #define LW(w) std::left << std::setw(w)
 
@@ -101,5 +103,14 @@ void args::help() {
               << "yt-dlp may leave some images and .part files in directory" << std::endl;
     std::cout << LW(w) << ""
               << "with this option ALL {.png, .jpg, .part} files will be deleted" << std::endl;
+}
+
+std::ostream& operator<<(std::ostream& os, const args& obj) {
+    os << "Args options:" << std::endl;
+    watch(os, obj.verbose);
+    watch(os, obj.output);
+    watch(os, obj.cleanup);
+
+    return os;
 }
 }  // namespace mqr

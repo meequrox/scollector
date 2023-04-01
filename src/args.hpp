@@ -19,6 +19,8 @@ class args {
 
     bool parse(int argc, char** argv);
     void help();
+
+    friend std::ostream& operator<<(std::ostream& os, const args& obj);
 };
 }  // namespace mqr
 
