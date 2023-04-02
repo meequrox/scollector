@@ -109,7 +109,7 @@ static std::string filter_filename(const std::string& str) {
     }
 
     // Bad filename
-    if (fn == ".mp3") {
+    if (fn.length() <= std::size(".ext")) {
         srand(time(nullptr));
         fn = std::to_string(rand()) + fn;
     }
