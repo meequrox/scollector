@@ -33,12 +33,6 @@ static std::string make_json_array(const std::string& str) {
     return "[" + ja_str + "]";
 }
 
-static void dump_json_to_file(const json& json, const std::string& filename) {
-    std::ofstream file(filename);
-    file << json.dump();
-    file.close();
-}
-
 static std::string read_from_pipe(const std::string& cmd) {
     const std::string cmd_mod = cmd + PIPE_TO_STDOUT;
     FILE* pipe = popen(cmd_mod.c_str(), "r");
@@ -126,7 +120,7 @@ static void normalize_filenames(const downloader& obj) {
         if (entry.is_regular_file() && is_compatible_extension(extensions, entry.path())) {
             std::string from = entry.path().filename().generic_string();
             std::string to = filter_filename(from);
-            fs::rename(from, to);
+            if (from != to) fs::rename(from, to);
         }
     }
 }
@@ -139,12 +133,11 @@ constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
 
 bool downloader::download(bool cleanup, bool normalize) {
     sqlite3* db = nullptr;
+    // TODO: get db path using ENV
     constexpr char p[] = "scollector.db";
     if (!db_start(p, &db)) return false;
 
     fs::path prev_path = fs::current_path();
-    fs::create_directory(dest_dir);
-    fs::current_path(dest_dir);
 
     bool success = true;
     constexpr char baseurl[] = "https://soundcloud.com/discover/sets/charts-";
@@ -168,16 +161,21 @@ bool downloader::download(bool cleanup, bool normalize) {
 
             json_str = make_json_array(json_str);
             json songs = json::parse(json_str);
-            dump_json_to_file(songs, chart + "." + genre);  // TEMP
+
+            size_t count = 0;
+            std::vector<uint32_t> ids;
 
             url.clear();
-            size_t count = 0;
             for (const auto& song : songs) {
-                // TODO: check song id in DB
+                uint32_t id = std::stoull(static_cast<std::string>(song["id"]));
 
-                url += song["webpage_url"];
-                url += " ";
-                count++;
+                if (!db_id_exists(id, db)) {
+                    ids.push_back(id);
+                    count++;
+
+                    url += song["webpage_url"];
+                    url += " ";
+                }
             }
 
             std::cout << chart << ":" << genre << " - Downloading " << count << " songs..." << std::endl;
@@ -186,7 +184,10 @@ bool downloader::download(bool cleanup, bool normalize) {
                 if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
                 if (!max_rate.empty()) cmd += "-r " + max_rate;
 
+                fs::create_directory(dest_dir);
+                fs::current_path(dest_dir);
                 system((cmd + PIPE_TO_STDOUT).c_str());
+                for (const auto& id : ids) db_insert(db, id);
             }
 
             std::cout << chart << ":" << genre << " - Download finished (" << count << ")" << std::endl;
