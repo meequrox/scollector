@@ -1,5 +1,7 @@
 #include "args.hpp"
 
+#include <iostream>
+
 #define watch(os, x) os << std::left << std::setw(24) << #x ":" << std::boolalpha << x << std::endl;
 
 namespace mqr {

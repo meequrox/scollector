@@ -27,12 +27,8 @@ class downloader {
     const std::vector<std::string> genres = {"danceedm", "electronic", "hiphoprap", "house"};
 
    public:
-    downloader(fs::path output, std::string& rate_limit, std::string& duration_limit);
+    downloader(fs::path& output, std::string& rate_limit, std::string& duration_limit);
     bool download(bool cleanup, bool normalize);
-
-    const std::vector<std::string> get_charts() const;
-    const std::vector<std::string> get_genres() const;
-    const fs::path get_destination() const;
 
     friend std::ostream& operator<<(std::ostream& os, const downloader& obj);
 };

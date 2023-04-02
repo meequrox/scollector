@@ -30,7 +30,7 @@ void db_insert(sqlite3* dbp, uint32_t id) {
     }
 }
 
-int db_exists_callback(void* exists, int count, char** data, char** columns) {
+static int db_exists_callback(void* exists, int count, char** data, char** columns) {
     /* *exists = true  if there is 1 column
      * *exists = false if there is no columns */
 
