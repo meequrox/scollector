@@ -41,6 +41,21 @@ bool args::parse(int argc, char** argv) {
                 if (ch == 'h') {
                     help(argv[0]);
                     return false;
+                } else if (ch == 'l') {
+                    if (i + 1 >= argc) {
+                        std::cout << "-l option without country code" << std::endl;
+                        help(argv[0]);
+                        return false;
+                    }
+
+                    country_code = argv[i + 1];
+                    i++;
+
+                    if (country_code.size() != 2) {
+                        std::cout << "Unknown country code " << country_code << std::endl;
+                        help(argv[0]);
+                        return false;
+                    }
                 } else if (ch == 'v') {
                     verbose = true;
                 } else if (ch == 'o') {
@@ -97,6 +112,12 @@ bool args::parse(int argc, char** argv) {
         }
     }
 
+    if (country_code.empty()) {
+        std::cout << "-l option is required but not set" << std::endl;
+        help(argv[0]);
+        return false;
+    }
+
     return true;
 }
 
@@ -104,17 +125,25 @@ void args::reset_options() {
     verbose = false;
     cleanup = false;
     normalize = false;
+
+    country_code.clear();
+    rate_limit.clear();
+    duration_limit.clear();
     output = fs::current_path() / "scollector_dl";
 }
 
 void args::help(char* binary) {
     constexpr int w = 16;
 
-    std::cout << "Usage: " << binary << std::endl << std::endl;
+    std::cout << "Usage: " << binary << " -l COUNTRY [OPTIONS]" << std::endl << std::endl;
     std::cout << "options:" << std::endl;
 
     std::cout << LW(w) << " -h,--help"
               << "print this help message" << std::endl;
+
+    std::cout << LW(w) << " -l COUNTRY"
+              << "which country playlist to download (two-letter ISO 3166-2), e.g. ru, th, mx"
+              << std::endl;
 
     std::cout << LW(w) << " -v"
               << "print additional info" << std::endl;

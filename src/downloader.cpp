@@ -10,7 +10,7 @@
 
 namespace mqr {
 downloader::downloader(fs::path& output, std::string& rate_limit, std::string& duration_limit)
-    : lang("ru"), dest_dir(output), max_rate(rate_limit), max_duration(duration_limit) {
+    : dest_dir(output), max_rate(rate_limit), max_duration(duration_limit) {
     // Currently UNIX-like only
     fs::path data_dir;
     char* xdg_data_path = std::getenv("XDG_DATA_HOME");
@@ -142,7 +142,7 @@ constexpr char o_prgt[] = "--progress-template \"'%(info.title)s' %(progress._de
 constexpr char o_out[] = "-q --progress --no-warnings ";
 constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
 
-bool downloader::download(bool cleanup, bool normalize) {
+bool downloader::download(std::string& country, bool cleanup, bool normalize) {
     sqlite3* db = nullptr;
     if (!db_start(db_path.c_str(), &db)) return false;
 
@@ -156,8 +156,7 @@ bool downloader::download(bool cleanup, bool normalize) {
         if (!success) break;
 
         for (const auto& genre : genres) {
-            // TODO: option for lang
-            std::string url = baseurl + chart + ":" + genre + ":" + lang + " ";
+            std::string url = baseurl + chart + ":" + genre + ":" + country + " ";
 
             std::string cmd = "yt-dlp " + url + o_gen + "--dump-json ";
             if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";

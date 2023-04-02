@@ -22,13 +22,12 @@ class downloader {
     fs::path dest_dir;
     std::string max_rate;
     std::string max_duration;
-    const std::string lang;
     const std::vector<std::string> charts = {"top", "trending"};
     const std::vector<std::string> genres = {"danceedm", "electronic", "hiphoprap", "house"};
 
    public:
     downloader(fs::path& output, std::string& rate_limit, std::string& duration_limit);
-    bool download(bool cleanup, bool normalize);
+    bool download(std::string& country, bool cleanup, bool normalize);
 
     friend std::ostream& operator<<(std::ostream& os, const downloader& obj);
 };

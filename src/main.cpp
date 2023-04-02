@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
         std::cout << dl;
     }
 
-    if (!dl.download(args.cleanup, args.normalize))
+    if (!dl.download(args.country_code, args.cleanup, args.normalize))
         std::cout << "There were some errors while downloading" << std::endl;
 
     return EXIT_SUCCESS;

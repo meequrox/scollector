@@ -11,6 +11,7 @@ class args {
     bool verbose;
     bool cleanup;
     bool normalize;
+    std::string country_code;  // required
     std::string rate_limit;
     std::string duration_limit;
     fs::path output;
