@@ -18,6 +18,7 @@ namespace fs = std::filesystem;
 
 class downloader {
    private:
+    fs::path db_path;
     fs::path dest_dir;
     std::string max_rate;
     std::string max_duration;

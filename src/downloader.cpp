@@ -13,7 +13,20 @@ namespace mqr {
 using json = nlohmann::json;
 
 downloader::downloader(fs::path output, std::string& rate_limit, std::string& duration_limit)
-    : lang("ru"), dest_dir(output), max_rate(rate_limit), max_duration(duration_limit) {}
+    : lang("ru"), dest_dir(output), max_rate(rate_limit), max_duration(duration_limit) {
+    // Currently UNIX-like only
+    fs::path data_dir;
+    char* xdg_data_path = std::getenv("XDG_DATA_HOME");
+    if (xdg_data_path)
+        data_dir = xdg_data_path;
+    else
+        data_dir = std::string("/home/") + std::getenv("USER") + "/.local/share";
+
+    data_dir /= "scollector";
+    fs::create_directories(data_dir);
+
+    this->db_path = data_dir / "main.db";
+}
 
 static std::string make_json_array(const std::string& str) {
     size_t index = 0;
@@ -133,13 +146,12 @@ constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
 
 bool downloader::download(bool cleanup, bool normalize) {
     sqlite3* db = nullptr;
-    // TODO: get db path using ENV
-    constexpr char p[] = "scollector.db";
-    if (!db_start(p, &db)) return false;
+    if (!db_start(db_path.c_str(), &db)) return false;
 
     fs::path prev_path = fs::current_path();
 
     bool success = true;
+    bool dest_dir_created = false;
     constexpr char baseurl[] = "https://soundcloud.com/discover/sets/charts-";
 
     for (const auto& chart : charts) {
@@ -186,6 +198,8 @@ bool downloader::download(bool cleanup, bool normalize) {
 
                 fs::create_directory(dest_dir);
                 fs::current_path(dest_dir);
+                dest_dir_created = true;
+
                 system((cmd + PIPE_TO_STDOUT).c_str());
                 for (const auto& id : ids) db_insert(db, id);
             }
@@ -194,8 +208,8 @@ bool downloader::download(bool cleanup, bool normalize) {
         }
     }
 
-    if (cleanup) remove_images_in_dir(*this);
-    if (normalize) normalize_filenames(*this);
+    if (cleanup && dest_dir_created) remove_images_in_dir(*this);
+    if (normalize && dest_dir_created) normalize_filenames(*this);
 
     fs::current_path(prev_path);
     db_end(db);
@@ -204,8 +218,6 @@ bool downloader::download(bool cleanup, bool normalize) {
 }
 
 std::ostream& operator<<(std::ostream& os, const downloader& obj) {
-    os << "Downloader output directory: " << obj.dest_dir << std::endl;
-
     os << "Downloader charts:";
     for (const auto& chart : obj.charts) {
         os << " " << chart;
@@ -219,6 +231,8 @@ std::ostream& operator<<(std::ostream& os, const downloader& obj) {
     os << std::endl;
 
     os << "Downloader options:" << std::endl;
+    watch(os, obj.db_path);
+    watch(os, obj.dest_dir);
     watch(os, o_gen);
     watch(os, o_prg);
     watch(os, o_prgt);
