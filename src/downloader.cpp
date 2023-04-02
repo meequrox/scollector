@@ -5,6 +5,8 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
+#include "db.hpp"
+
 #define watch(os, x) os << std::left << std::setw(24) << #x ":" << x << std::endl;
 
 namespace mqr {
@@ -136,6 +138,10 @@ constexpr char o_out[] = "-q --progress --no-warnings ";
 constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
 
 bool downloader::download(bool cleanup, bool normalize) {
+    sqlite3* db = nullptr;
+    constexpr char p[] = "scollector.db";
+    if (!db_start(p, &db)) return false;
+
     fs::path prev_path = fs::current_path();
     fs::create_directory(dest_dir);
     fs::current_path(dest_dir);
@@ -191,6 +197,8 @@ bool downloader::download(bool cleanup, bool normalize) {
     if (normalize) normalize_filenames(*this);
 
     fs::current_path(prev_path);
+    db_end(db);
+
     return success;
 }
 
