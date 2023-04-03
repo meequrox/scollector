@@ -25,7 +25,7 @@ void db_begin(sqlite3* dbp) {
     }
 }
 
-void db_insert(sqlite3* dbp, uint32_t id) {
+void db_insert(sqlite3* dbp, const uint32_t id) {
     if (!dbp) return;
 
     constexpr char sql_insert[] = "INSERT INTO songs(id) VALUES";
@@ -56,7 +56,7 @@ static int db_exists_callback(void* exists, int count, char** data, char** colum
     return 0;
 }
 
-bool db_id_exists(uint32_t id, sqlite3* dbp) {
+bool db_id_exists(const uint32_t id, sqlite3* dbp) {
     if (!dbp) return false;
 
     constexpr char sql_exists[] = "SELECT 1 FROM songs WHERE id=";

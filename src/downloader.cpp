@@ -3,26 +3,41 @@
 #include <iomanip>
 #include <iostream>
 #include <nlohmann/json.hpp>
+// #include <omp.h>
 
 #include "db.hpp"
 
 #define watch(os, x) os << std::left << std::setw(24) << #x ":" << x << std::endl;
 
 namespace mqr {
-downloader::downloader(fs::path& output, std::string& rate_limit, std::string& duration_limit)
-    : dest_dir(output), max_rate(rate_limit), max_duration(duration_limit) {
+static fs::path get_data_path() {
     // Currently UNIX-like only
-    fs::path data_dir;
-    char* xdg_data_path = std::getenv("XDG_DATA_HOME");
-    if (xdg_data_path)
-        data_dir = xdg_data_path;
-    else
-        data_dir = std::string("/home/") + std::getenv("USER") + "/.local/share";
 
-    data_dir /= "scollector";
+    fs::path p;
+    const char* xdg_data_path = std::getenv("XDG_DATA_HOME");
+    if (xdg_data_path)
+        p = xdg_data_path;
+    else
+        p = std::string("/home/") + std::getenv("USER") + "/.local/share";
+
+    return p;
+}
+
+downloader::downloader(const fs::path& output, const std::string& rate_limit,
+                       const std::string& duration_limit)
+    : dest_dir(output), max_rate(rate_limit), max_duration(duration_limit) {
+    const std::vector<std::string> charts = {"top", "trending"};
+    const std::vector<std::string> genres = {"danceedm", "electronic", "hiphoprap", "house"};
+    for (const auto& c : charts) {
+        for (const auto& g : genres) {
+            playlists.push_back(c + ":" + g);
+        }
+    }
+
+    const fs::path data_dir = get_data_path() / "scollector";
     fs::create_directories(data_dir);
 
-    this->db_path = data_dir / "main.db";
+    db_path = data_dir / "main.db";
 }
 
 static std::string make_json_array(const std::string& str) {
@@ -32,6 +47,7 @@ static std::string make_json_array(const std::string& str) {
     const std::string substr = "}}\n{\"id\":";
     const std::string new_substr = "}},{\"id\":";
     const size_t offset = substr.size();
+
     while (true) {
         index = ja_str.find(substr, index);
         if (index == std::string::npos) break;
@@ -61,15 +77,15 @@ static std::string read_from_pipe(const std::string& cmd) {
     return dest;
 }
 
-inline static bool is_compatible_extension(std::vector<std::string>& exts, fs::path file) {
+inline static bool is_compatible_extension(const std::vector<std::string>& exts, const fs::path file) {
     std::string file_ext = file.extension().generic_string();
     std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 
     return std::find(exts.begin(), exts.end(), file_ext) != exts.end();
 }
 
-void remove_images_in_dir(fs::path dir) {
-    std::vector<std::string> extensions = {".png", ".jpg", ".part"};
+void remove_images_in_dir(const fs::path dir) {
+    const std::vector<std::string> extensions = {".png", ".jpg", ".part"};
 
     for (const fs::directory_entry& entry : fs::directory_iterator(dir)) {
         if (entry.is_regular_file() && is_compatible_extension(extensions, entry.path())) {
@@ -78,18 +94,16 @@ void remove_images_in_dir(fs::path dir) {
     }
 }
 
-inline static bool isprint_ru(char c) {
-    int code = (int)(unsigned char)c;
+inline static bool isprint_ru(const char c) {
+    const int code = (int)(unsigned char)c;
 
     // lowercase + uppercase: абвгдеёжзийклмноп || рстуфхцчшщъыьэюя
-    if ((code >= 176 && code <= 191) || (code >= 128 && code <= 175)) return true;
-
-    return false;
+    return (code >= 176 && code <= 191) || (code >= 128 && code <= 175);
 }
 
 static std::string filter_filename(const std::string& str) {
     std::string fn;
-    size_t len = str.size();
+    const size_t len = str.size();
 
     int i = 0;
     while (str[i] == ' ') i++;  // ltrim whitespace
@@ -123,12 +137,12 @@ static std::string filter_filename(const std::string& str) {
     return fn;
 }
 
-static void normalize_filenames(fs::path dir) {
-    std::vector<std::string> extensions = {".mp3", ".wav", ".aac"};
+static void normalize_filenames(const fs::path dir) {
+    const std::vector<std::string> extensions = {".mp3", ".wav", ".aac"};
 
     for (const fs::directory_entry& entry : fs::directory_iterator(dir)) {
         if (entry.is_regular_file() && is_compatible_extension(extensions, entry.path())) {
-            std::string from = entry.path().filename().generic_string();
+            const std::string from = entry.path().filename().generic_string();
             std::string to = filter_filename(from);
 
             if (from != to) fs::rename(from, to);
@@ -142,71 +156,81 @@ constexpr char o_prgt[] = "--progress-template \"'%(info.title)s' %(progress._de
 constexpr char o_out[] = "-q --progress --no-warnings ";
 constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
 
-bool downloader::download(std::string& country, bool cleanup, bool normalize) {
+bool downloader::download(const std::string& country, bool cleanup, bool normalize) const {
     sqlite3* db = nullptr;
     if (!db_open(db_path.c_str(), &db)) return false;
 
-    fs::path prev_path = fs::current_path();
+    const fs::path prev_path = fs::current_path();
 
     bool success = true;
     bool dest_dir_created = false;
     constexpr char baseurl[] = "https://soundcloud.com/discover/sets/charts-";
 
-    for (const auto& chart : charts) {
-        if (!success) break;
+    // #pragma omp parallel {
+    // #pragma omp for
+    for (const auto& p : playlists) {
+        std::string url = baseurl + p + ":" + country + " ";
+        std::string cmd = "yt-dlp " + url + o_gen + "--dump-json ";
+        if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
+        if (!max_rate.empty()) cmd += "-r " + max_rate;
 
-        for (const auto& genre : genres) {
-            std::string url = baseurl + chart + ":" + genre + ":" + country + " ";
+        std::cout << std::endl << p << " - Downloading JSON" << std::endl;
+        const std::string json_str = read_from_pipe(cmd);
+        if (json_str.empty()) {
+            // #pragma omp atomic
+            success = false;
+            break;
+        }
 
-            std::string cmd = "yt-dlp " + url + o_gen + "--dump-json ";
+        const nlohmann::json songs = nlohmann::json::parse(make_json_array(json_str));
+
+        // #pragma omp critical(cout)
+        std::cout << p << " - JSON downloaded" << std::endl;
+
+        size_t count = 0;
+        std::vector<uint32_t> ids;
+        url.clear();
+        for (const auto& song : songs) {
+            uint32_t id = std::stoull(static_cast<std::string>(song["id"]));
+
+            // lock mutex_db
+            if (!db_id_exists(id, db)) {
+                ids.push_back(id);
+                count++;
+
+                url += song["webpage_url"];
+                url += " ";
+            }
+            // free mutex_db
+        }
+
+        // #pragma omp critical(cout)
+        std::cout << p << " - Downloading " << count << " songs..." << std::endl;
+
+        if (count) {
+            cmd = "yt-dlp " + url + o_gen + o_prg + o_prgt + o_out + o_pp;
             if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
             if (!max_rate.empty()) cmd += "-r " + max_rate;
 
-            std::cout << std::endl << chart << ":" << genre << " - Loading JSON info" << std::endl;
-            std::string json_str = read_from_pipe(cmd);
-            if (json_str.empty()) {
-                success = false;
-                break;
-            }
+            // #pragma omp critical(fs)
+            // {
+            fs::create_directory(dest_dir);
+            fs::current_path(dest_dir);
+            dest_dir_created = true;
+            system((cmd + PIPE_TO_STDOUT).c_str());
+            // }
 
-            json_str = make_json_array(json_str);
-            nlohmann::json songs = nlohmann::json::parse(json_str);
-
-            size_t count = 0;
-            std::vector<uint32_t> ids;
-            url.clear();
-            for (const auto& song : songs) {
-                uint32_t id = std::stoull(static_cast<std::string>(song["id"]));
-
-                if (!db_id_exists(id, db)) {
-                    ids.push_back(id);
-                    count++;
-
-                    url += song["webpage_url"];
-                    url += " ";
-                }
-            }
-
-            std::cout << chart << ":" << genre << " - Downloading " << count << " songs..." << std::endl;
-            if (count) {
-                cmd = "yt-dlp " + url + o_gen + o_prg + o_prgt + o_out + o_pp;
-                if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
-                if (!max_rate.empty()) cmd += "-r " + max_rate;
-
-                fs::create_directory(dest_dir);
-                fs::current_path(dest_dir);
-                dest_dir_created = true;
-
-                system((cmd + PIPE_TO_STDOUT).c_str());
-
-                db_begin(db);
-                for (const auto& id : ids) db_insert(db, id);
-                db_end(db);
-            }
-
-            std::cout << chart << ":" << genre << " - Download finished (" << count << ")" << std::endl;
+            // lock mutex_db
+            db_begin(db);
+            for (const auto& id : ids) db_insert(db, id);
+            db_end(db);
+            // free mutex_db
         }
+
+        // #pragma omp critical(cout)
+        std::cout << p << " - Download finished (" << count << ")" << std::endl;
     }
+    // }
 
     if (cleanup && dest_dir_created) remove_images_in_dir(dest_dir);
     if (normalize && dest_dir_created) normalize_filenames(dest_dir);
@@ -218,15 +242,9 @@ bool downloader::download(std::string& country, bool cleanup, bool normalize) {
 }
 
 std::ostream& operator<<(std::ostream& os, const downloader& obj) {
-    os << "Downloader charts:";
-    for (const auto& chart : obj.charts) {
-        os << " " << chart;
-    }
-    os << std::endl;
-
-    os << "Downloader genres:";
-    for (const auto& genre : obj.genres) {
-        os << " " << genre;
+    os << "Downloader playlists:";
+    for (const auto& p : obj.playlists) {
+        os << " " << p;
     }
     os << std::endl;
 

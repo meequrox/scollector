@@ -19,15 +19,14 @@ namespace fs = std::filesystem;
 class downloader {
    private:
     fs::path db_path;
-    fs::path dest_dir;
-    std::string max_rate;
-    std::string max_duration;
-    const std::vector<std::string> charts = {"top", "trending"};
-    const std::vector<std::string> genres = {"danceedm", "electronic", "hiphoprap", "house"};
+    const fs::path dest_dir;
+    const std::string max_rate;
+    const std::string max_duration;
+    std::vector<std::string> playlists;
 
    public:
-    downloader(fs::path& output, std::string& rate_limit, std::string& duration_limit);
-    bool download(std::string& country, bool cleanup, bool normalize);
+    downloader(const fs::path& output, const std::string& rate_limit, const std::string& duration_limit);
+    bool download(const std::string& country, bool cleanup, bool normalize) const;
 
     friend std::ostream& operator<<(std::ostream& os, const downloader& obj);
 };

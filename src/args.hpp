@@ -11,16 +11,18 @@ class args {
     bool verbose;
     bool cleanup;
     bool normalize;
+
     std::string country_code;  // required
     std::string rate_limit;
     std::string duration_limit;
+
     fs::path output;
 
     args();
     void reset_options();
 
     bool parse(int argc, char** argv);
-    void help(char* binary);
+    void help(char* binary) const;
 
     friend std::ostream& operator<<(std::ostream& os, const args& obj);
 };

@@ -18,10 +18,10 @@ bool args::parse(int argc, char** argv) {
             return false;
         }
 
-        std::string arg = argv[i];
+        const std::string arg = argv[i];
         std::string opt_type = arg.substr(0, 2);
         if (opt_type == "--") {
-            std::string opt = arg.substr(2);
+            const std::string opt = arg.substr(2);
 
             if (opt == "help") {
                 help(argv[0]);
@@ -35,7 +35,7 @@ bool args::parse(int argc, char** argv) {
 
         opt_type = arg.substr(0, 1);
         if (opt_type == "-") {
-            std::string opt = arg.substr(1);
+            const std::string opt = arg.substr(1);
 
             for (const auto& ch : opt) {
                 if (ch == 'h') {
@@ -65,12 +65,11 @@ bool args::parse(int argc, char** argv) {
                         return false;
                     }
 
-                    std::string arg_next = argv[i + 1];
-                    if (fs::exists(arg_next) && fs::is_directory(arg_next)) {
-                        output = arg_next;
+                    if (fs::exists(argv[i + 1]) && fs::is_directory(argv[i + 1])) {
+                        output = argv[i + 1];
                         output = fs::absolute(output.lexically_normal()) / "scollector_dl";
                     } else {
-                        std::cerr << arg_next << " doesn't exist or isn't a directory" << std::endl
+                        std::cerr << argv[i + 1] << " doesn't exist or isn't a directory" << std::endl
                                   << std::endl;
                         help(argv[0]);
                         return false;
@@ -132,7 +131,7 @@ void args::reset_options() {
     output = fs::current_path() / "scollector_dl";
 }
 
-void args::help(char* binary) {
+void args::help(char* binary) const {
     constexpr int w = 16;
 
     std::cout << "Usage: " << binary << " -l COUNTRY [OPTIONS]" << std::endl << std::endl;
