@@ -10,14 +10,22 @@
 
 namespace mqr {
 static fs::path get_data_path() {
-    // Currently UNIX-like only
-
     fs::path p;
-    const char* xdg_data_path = std::getenv("XDG_DATA_HOME");
-    if (xdg_data_path)
-        p = xdg_data_path;
+    char* data_path = nullptr;
+
+#ifdef _WIN32
+    data_path = std::getenv("APPDATA");
+    if (data_path)
+        p = data_path;
     else
-        p = std::string("/home/") + std::getenv("USER") + "/.local/share";
+        p = std::getenv("USERPROFILE") + std::string("AppData\Roaming");
+#else  // UNIX-like
+    data_path = std::getenv("XDG_DATA_HOME");
+    if (data_path)
+        p = data_path;
+    else
+        p = std::getenv("HOME") + std::string("/.local/share");
+#endif
 
     return p;
 }
