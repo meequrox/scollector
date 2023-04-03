@@ -168,6 +168,8 @@ constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
     std::cout << "T" << omp_get_thread_num() << ": " << LW(32) << p << " - " << c \
               << " songs downloaded (end)" << std::endl;
 
+#define MSG_SONGS_TOTAL(c) std::cout << "Total " << c << " songs downloaded" << std::endl;
+
 bool downloader::download(const std::string& country, bool cleanup, bool normalize) const {
     sqlite3* db = nullptr;
     if (!db_open(db_path.c_str(), &db)) return false;
@@ -176,6 +178,7 @@ bool downloader::download(const std::string& country, bool cleanup, bool normali
     const fs::path prev_path = fs::current_path();
 
     int success = 1;
+    int total = 0;
     bool dest_dir_created = false;
 
     omp_lock_t lock_db;
@@ -244,6 +247,9 @@ bool downloader::download(const std::string& country, bool cleanup, bool normali
                 for (const auto& id : ids) db_insert(db, id);
                 db_end(db);
                 omp_unset_lock(&lock_db);
+
+                #pragma omp atomic
+                total += count;
             }
 
             #pragma omp critical(cout)
@@ -254,6 +260,7 @@ bool downloader::download(const std::string& country, bool cleanup, bool normali
 
     if (cleanup && dest_dir_created) remove_images_in_dir(dest_dir);
     if (normalize && dest_dir_created) normalize_filenames(dest_dir);
+    MSG_SONGS_TOTAL(total);
 
     if (dest_dir_created) fs::current_path(prev_path);
     db_close(db);
