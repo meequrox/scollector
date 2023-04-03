@@ -2,7 +2,7 @@
 
 Collects tracks **you haven't heard yet** from [SoundCloud](https://soundcloud.com/discover) charts and downloads them using [yt-dlp](https://github.com/yt-dlp/yt-dlp). Uses SQLite database engine and OpenMP multiprocessing API.
 
-Currently only UNIX-like OSes are supported, feel free to [add support for Windows](https://github.com/meequrox/scollector/blob/05513a50db1a65a7b4943441baa2f992c8c5b428/src/downloader.cpp#L14).
+The app builds and works correctly on UNIX-like operating systems. If you like pain, you can try to compile under Windows, in theory there should be no runtime errors.
 
 ## Screenshots
 
