@@ -1,13 +1,12 @@
 #include "downloader.hpp"
 
+#include <omp.h>
+
 #include <iomanip>
 #include <iostream>
 #include <nlohmann/json.hpp>
-// #include <omp.h>
 
 #include "db.hpp"
-
-#define watch(os, x) os << std::left << std::setw(24) << #x ":" << x << std::endl;
 
 namespace mqr {
 static fs::path get_data_path() {
@@ -156,81 +155,102 @@ constexpr char o_prgt[] = "--progress-template \"'%(info.title)s' %(progress._de
 constexpr char o_out[] = "-q --progress --no-warnings ";
 constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
 
+#define LW(w) std::left << std::setw(w)
+#define MSG_JSON_LOADING(p)                                                                  \
+    std::cout << "T" << omp_get_thread_num() << ": " << LW(32) << p << " - Downloading JSON" \
+              << std::endl;
+#define MSG_JSON_LOADED(p) \
+    std::cout << "T" << omp_get_thread_num() << ": " << LW(32) << p << " - JSON downloaded" << std::endl;
+#define MSG_SONGS_LOADING(p, c)                                                               \
+    std::cout << "T" << omp_get_thread_num() << ": " << LW(32) << p << " - Downloading " << c \
+              << " songs" << std::endl;
+#define MSG_SONGS_LOADED(p, c)                                                    \
+    std::cout << "T" << omp_get_thread_num() << ": " << LW(32) << p << " - " << c \
+              << " songs downloaded (end)" << std::endl;
+
 bool downloader::download(const std::string& country, bool cleanup, bool normalize) const {
     sqlite3* db = nullptr;
     if (!db_open(db_path.c_str(), &db)) return false;
 
+    constexpr char baseurl[] = "https://soundcloud.com/discover/sets/charts-";
     const fs::path prev_path = fs::current_path();
 
-    bool success = true;
+    int success = 1;
     bool dest_dir_created = false;
-    constexpr char baseurl[] = "https://soundcloud.com/discover/sets/charts-";
 
-    // #pragma omp parallel {
-    // #pragma omp for
-    for (const auto& p : playlists) {
-        std::string url = baseurl + p + ":" + country + " ";
-        std::string cmd = "yt-dlp " + url + o_gen + "--dump-json ";
-        if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
-        if (!max_rate.empty()) cmd += "-r " + max_rate;
+    omp_lock_t lock_db;
+    omp_init_lock(&lock_db);
 
-        std::cout << std::endl << p << " - Downloading JSON" << std::endl;
-        const std::string json_str = read_from_pipe(cmd);
-        if (json_str.empty()) {
-            // #pragma omp atomic
-            success = false;
-            break;
-        }
-
-        const nlohmann::json songs = nlohmann::json::parse(make_json_array(json_str));
-
-        // #pragma omp critical(cout)
-        std::cout << p << " - JSON downloaded" << std::endl;
-
-        size_t count = 0;
-        std::vector<uint32_t> ids;
-        url.clear();
-        for (const auto& song : songs) {
-            uint32_t id = std::stoull(static_cast<std::string>(song["id"]));
-
-            // lock mutex_db
-            if (!db_id_exists(id, db)) {
-                ids.push_back(id);
-                count++;
-
-                url += song["webpage_url"];
-                url += " ";
-            }
-            // free mutex_db
-        }
-
-        // #pragma omp critical(cout)
-        std::cout << p << " - Downloading " << count << " songs..." << std::endl;
-
-        if (count) {
-            cmd = "yt-dlp " + url + o_gen + o_prg + o_prgt + o_out + o_pp;
+    #pragma omp parallel
+    {
+        #pragma omp for
+        for (const auto& p : playlists) {
+            std::string url = baseurl + p + ":" + country + " ";
+            std::string cmd = "yt-dlp " + url + o_gen + "--dump-json ";
             if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
             if (!max_rate.empty()) cmd += "-r " + max_rate;
 
-            // #pragma omp critical(fs)
-            // {
-            fs::create_directory(dest_dir);
-            fs::current_path(dest_dir);
-            dest_dir_created = true;
-            system((cmd + PIPE_TO_STDOUT).c_str());
-            // }
+            #pragma omp critical(cout)
+            MSG_JSON_LOADING(p);
 
-            // lock mutex_db
-            db_begin(db);
-            for (const auto& id : ids) db_insert(db, id);
-            db_end(db);
-            // free mutex_db
+            const std::string json_str = read_from_pipe(cmd);
+            if (json_str.empty()) {
+                #pragma omp atomic
+                success--;
+            }
+            if (success != 1) continue;
+
+            #pragma omp critical(cout)
+            MSG_JSON_LOADED(p);
+
+            const nlohmann::json songs = nlohmann::json::parse(make_json_array(json_str));
+            size_t count = 0;
+            std::vector<uint32_t> ids;
+            url.clear();
+
+            omp_set_lock(&lock_db);
+            for (const auto& song : songs) {
+                uint32_t id = std::stoull(static_cast<std::string>(song["id"]));
+
+                if (!db_id_exists(id, db)) {
+                    ids.push_back(id);
+                    count++;
+
+                    url += song["webpage_url"];
+                    url += " ";
+                }
+            }
+            omp_unset_lock(&lock_db);
+
+            #pragma omp critical(cout)
+            MSG_SONGS_LOADING(p, count);
+
+            if (count) {
+                cmd = "yt-dlp " + url + o_gen + o_prg + o_prgt + o_out + o_pp;
+                if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
+                if (!max_rate.empty()) cmd += "-r " + max_rate;
+
+                #pragma omp critical(fs)
+                {
+                    fs::create_directory(dest_dir);
+                    fs::current_path(dest_dir);
+                    dest_dir_created = true;
+
+                    system((cmd + PIPE_TO_STDOUT).c_str());
+                }
+
+                omp_set_lock(&lock_db);
+                db_begin(db);
+                for (const auto& id : ids) db_insert(db, id);
+                db_end(db);
+                omp_unset_lock(&lock_db);
+            }
+
+            #pragma omp critical(cout)
+            MSG_SONGS_LOADED(p, count);
         }
-
-        // #pragma omp critical(cout)
-        std::cout << p << " - Download finished (" << count << ")" << std::endl;
     }
-    // }
+    omp_destroy_lock(&lock_db);
 
     if (cleanup && dest_dir_created) remove_images_in_dir(dest_dir);
     if (normalize && dest_dir_created) normalize_filenames(dest_dir);
@@ -238,8 +258,10 @@ bool downloader::download(const std::string& country, bool cleanup, bool normali
     if (dest_dir_created) fs::current_path(prev_path);
     db_close(db);
 
-    return success;
+    return success == 1;
 }
+
+#define watch(os, x) os << std::left << std::setw(24) << #x ":" << x << std::endl;
 
 std::ostream& operator<<(std::ostream& os, const downloader& obj) {
     os << "Downloader playlists:";
@@ -256,9 +278,9 @@ std::ostream& operator<<(std::ostream& os, const downloader& obj) {
     watch(os, o_prgt);
     watch(os, o_out);
     watch(os, o_pp);
-    watch(os, obj.max_rate);
-    watch(os, obj.max_duration);
+    if (!obj.max_rate.empty()) watch(os, obj.max_rate);
+    if (!obj.max_duration.empty()) watch(os, obj.max_duration);
 
-    return os;
+    return os << std::endl;
 }
 }  // namespace mqr

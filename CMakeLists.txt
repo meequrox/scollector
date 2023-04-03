@@ -17,8 +17,11 @@ target_sources(scollector PRIVATE
     src/downloader.cpp
 )
 
-find_package (SQLite3)
-target_link_libraries(scollector SQLite::SQLite3)
+find_package (SQLite3 REQUIRED)
+target_link_libraries(scollector PRIVATE SQLite::SQLite3)
+
+find_package(OpenMP REQUIRED)
+target_link_libraries(scollector PRIVATE OpenMP::OpenMP_CXX)
 
 install(TARGETS scollector
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
