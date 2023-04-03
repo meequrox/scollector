@@ -164,19 +164,16 @@ constexpr char o_out[] = "-q --progress --no-warnings ";
 constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
 
 #define LW(w) std::left << std::setw(w)
-#define MSG_JSON_LOADING(p)                                                                  \
-    std::cout << "T" << omp_get_thread_num() << ": " << LW(32) << p << " - Downloading JSON" \
-              << std::endl;
-#define MSG_JSON_LOADED(p) \
-    std::cout << "T" << omp_get_thread_num() << ": " << LW(32) << p << " - JSON downloaded" << std::endl;
-#define MSG_SONGS_LOADING(p, c)                                                               \
-    std::cout << "T" << omp_get_thread_num() << ": " << LW(32) << p << " - Downloading " << c \
-              << " songs" << std::endl;
-#define MSG_SONGS_LOADED(p, c)                                                    \
-    std::cout << "T" << omp_get_thread_num() << ": " << LW(32) << p << " - " << c \
-              << " songs downloaded (end)" << std::endl;
+#define TNUM "T" << omp_get_thread_num() << ": "
 
-#define MSG_SONGS_TOTAL(c) std::cout << "Total " << c << " songs downloaded" << std::endl;
+#define MSG_JSON_LOADING(p) std::cout << TNUM << LW(32) << p << " - Downloading JSON" << std::endl;
+#define MSG_JSON_LOADED(p) std::cout << TNUM << LW(32) << p << " - JSON downloaded" << std::endl;
+#define MSG_SONGS_LOADING(p, c) \
+    std::cout << TNUM << LW(32) << p << " - Downloading " << c << " songs" << std::endl;
+#define MSG_SONGS_LOADED(p, c) \
+    std::cout << TNUM << LW(32) << p << " - " << c << " songs downloaded" << std::endl;
+
+#define MSG_SONGS_TOTAL(c) std::cout << "Total " << c << " new songs downloaded" << std::endl;
 
 bool downloader::download(const std::string& country, bool cleanup, bool normalize) const {
     sqlite3* db = nullptr;
@@ -233,9 +230,6 @@ bool downloader::download(const std::string& country, bool cleanup, bool normali
             }
             omp_unset_lock(&lock_db);
 
-            #pragma omp critical(cout)
-            MSG_SONGS_LOADING(p, count);
-
             if (count) {
                 cmd = "yt-dlp " + url + o_gen + o_prg + o_prgt + o_out + o_pp;
                 if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
@@ -247,6 +241,9 @@ bool downloader::download(const std::string& country, bool cleanup, bool normali
                     fs::current_path(dest_dir);
                     dest_dir_created = true;
 
+                    #pragma omp critical(cout)
+                    MSG_SONGS_LOADING(p, count);
+
                     system((cmd + PIPE_TO_STDOUT).c_str());
                 }
 
@@ -256,12 +253,12 @@ bool downloader::download(const std::string& country, bool cleanup, bool normali
                 db_end(db);
                 omp_unset_lock(&lock_db);
 
+                #pragma omp critical(cout)
+                MSG_SONGS_LOADED(p, count);
+
                 #pragma omp atomic
                 total += count;
             }
-
-            #pragma omp critical(cout)
-            MSG_SONGS_LOADED(p, count);
         }
     }
     omp_destroy_lock(&lock_db);
