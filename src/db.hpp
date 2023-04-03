@@ -5,9 +5,14 @@
 
 #include <cstdint>
 
-bool db_start(const char* path, sqlite3** dbpp);
+bool db_open(const char* path, sqlite3** dbpp);
+
+void db_begin(sqlite3* dbp);
 void db_insert(sqlite3* dbp, uint32_t id);
-bool db_id_exists(uint32_t id, sqlite3* dbp);
 void db_end(sqlite3* dbp);
+
+bool db_id_exists(uint32_t id, sqlite3* dbp);
+
+void db_close(sqlite3* dbp);
 
 #endif  // DB_HPP

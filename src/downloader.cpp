@@ -144,7 +144,7 @@ constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
 
 bool downloader::download(std::string& country, bool cleanup, bool normalize) {
     sqlite3* db = nullptr;
-    if (!db_start(db_path.c_str(), &db)) return false;
+    if (!db_open(db_path.c_str(), &db)) return false;
 
     fs::path prev_path = fs::current_path();
 
@@ -198,7 +198,10 @@ bool downloader::download(std::string& country, bool cleanup, bool normalize) {
                 dest_dir_created = true;
 
                 system((cmd + PIPE_TO_STDOUT).c_str());
+
+                db_begin(db);
                 for (const auto& id : ids) db_insert(db, id);
+                db_end(db);
             }
 
             std::cout << chart << ":" << genre << " - Download finished (" << count << ")" << std::endl;
@@ -209,7 +212,7 @@ bool downloader::download(std::string& country, bool cleanup, bool normalize) {
     if (normalize && dest_dir_created) normalize_filenames(dest_dir);
 
     if (dest_dir_created) fs::current_path(prev_path);
-    db_end(db);
+    db_close(db);
 
     return success;
 }
