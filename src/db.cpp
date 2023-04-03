@@ -36,7 +36,7 @@ void db_insert(sqlite3* dbp, const uint32_t id) {
     }
 }
 
-void db_commit(sqlite3* dbp) {
+void db_end(sqlite3* dbp) {
     if (!dbp) return;
 
     std::string query = "END TRANSACTION;";

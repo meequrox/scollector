@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
     const mqr::downloader dl(args.output, args.rate_limit, args.duration_limit);
 
     if (args.verbose) {
-        std::cout << args << std::endl;
+        std::cout << args;
 
         std::cout << "yt-dlp version: ";
         std::cout.flush();

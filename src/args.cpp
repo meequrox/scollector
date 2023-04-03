@@ -2,11 +2,7 @@
 
 #include <iostream>
 
-#define watch(os, x) os << std::left << std::setw(24) << #x ":" << std::boolalpha << x << std::endl;
-
 namespace mqr {
-#define LW(w) std::left << std::setw(w)
-
 args::args() { reset_options(); }
 
 bool args::parse(int argc, char** argv) {
@@ -131,6 +127,8 @@ void args::reset_options() {
     output = fs::current_path() / "scollector_dl";
 }
 
+#define LW(w) std::left << std::setw(w)
+
 void args::help(char* binary) const {
     constexpr int w = 16;
 
@@ -167,15 +165,17 @@ void args::help(char* binary) const {
               << "maximum song duration in seconds, e.g. 600 or 130" << std::endl;
 }
 
+#define watch(os, x) os << std::left << std::setw(24) << #x ":" << std::boolalpha << x << std::endl;
+
 std::ostream& operator<<(std::ostream& os, const args& obj) {
     os << "Args options:" << std::endl;
     watch(os, obj.verbose);
     watch(os, obj.output);
     watch(os, obj.cleanup);
     watch(os, obj.normalize);
-    watch(os, obj.rate_limit);
-    watch(os, obj.duration_limit);
+    if (!obj.rate_limit.empty()) watch(os, obj.rate_limit);
+    if (!obj.duration_limit.empty()) watch(os, obj.duration_limit);
 
-    return os;
+    return os << std::endl;
 }
 }  // namespace mqr
