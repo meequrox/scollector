@@ -1,18 +1,19 @@
 # scollector
 
-Collects tracks **you haven't heard yet** from [SoundCloud](https://soundcloud.com/discover) charts and downloads them using [yt-dlp](https://github.com/yt-dlp/yt-dlp).
+Collects tracks **you haven't heard yet** from [SoundCloud](https://soundcloud.com/discover) charts and downloads them using [yt-dlp](https://github.com/yt-dlp/yt-dlp). Uses SQLite database engine and OpenMP multiprocessing API.
 
 Currently only UNIX-like OSes are supported, feel free to [add support for Windows](https://github.com/meequrox/scollector/blob/05513a50db1a65a7b4943441baa2f992c8c5b428/src/downloader.cpp#L14).
 
 ## Screenshots
 
-![Verbose](https://hostux.pics/images/2023/04/02/eAhkXhk22799c6a9d0a63f9.png)
+![](https://img.tedomum.net/data/2023-04-03_18-33-12ae41.png)
 
 ## Installation
 
 You need to install these libraries first:
 - nlohmann/json (Debian: `nlohmann-json-dev`, Arch: `nlohmann-json`)
 - SQLite3 (Debian: `libsqlite3-dev`, Arch: `sqlite`)
+- OpenMP (Debian: `libomp-dev`, Arch: `openmp`)
 
 ```bash
 git clone https://github.com/meequrox/scollector.git
