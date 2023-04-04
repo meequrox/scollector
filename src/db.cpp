@@ -8,6 +8,8 @@ db::db() : dbp(nullptr) {}
 int db::open(const char* path) {
     if (dbp) {
         std::cout << __FUNCTION__ << ": another db is currently open " << std::endl;
+
+        dbp = nullptr;
         return -1;
     }
 
