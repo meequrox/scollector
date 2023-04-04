@@ -13,7 +13,8 @@ int main(int argc, char** argv) {
     mqr::args args;
     if (!args.parse(argc, argv)) return EXIT_FAILURE;
 
-    const mqr::downloader dl(args.output, args.rate_limit, args.duration_limit);
+    const mqr::downloader dl({args.output, args.rate_limit, args.duration_limit, args.country_code,
+                              args.cleanup, args.normalize});
 
     if (args.verbose) {
         std::cout << args;
@@ -25,8 +26,7 @@ int main(int argc, char** argv) {
         std::cout << dl;
     }
 
-    if (dl.download(args.country_code, args.cleanup, args.normalize) != 0)
-        std::cout << "There were some errors while downloading" << std::endl;
+    if (dl.download() != 0) std::cout << "There were some errors while downloading" << std::endl;
 
     return EXIT_SUCCESS;
 }

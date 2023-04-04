@@ -30,9 +30,7 @@ static fs::path get_data_path() {
     return p;
 }
 
-downloader::downloader(const fs::path& output, const std::string& rate_limit,
-                       const std::string& duration_limit)
-    : dest_dir(output), max_rate(rate_limit), max_duration(duration_limit) {
+downloader::downloader(const downloader_args& args) : args(std::move(args)) {
     const std::vector<std::string> charts = {"top", "trending"};
     const std::vector<std::string> genres = {"danceedm", "electronic", "hiphoprap", "house"};
     for (const auto& c : charts) {
@@ -171,20 +169,20 @@ constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
 #define TMSG_INTERRUPTED(p) printf("\rT%d: %-*s - Download interrupted\n", TNUM, 32, p);
 #define MSG_SONGS_TOTAL(c) std::cout << "Total " << c << " new songs downloaded" << std::endl;
 
-int downloader::download(const std::string& country, bool cleanup, bool normalize) const {
+int downloader::download() const {
     mqr::db db;
     if (db.open(db_path.c_str()) != 0) return -1;
 
     const fs::path prev_path = fs::current_path();
-    fs::create_directory(dest_dir);
-    fs::current_path(dest_dir);
+    fs::create_directory(args.dest_dir);
+    fs::current_path(args.dest_dir);
 
     const std::string o_duration =
-        max_duration.empty() ? "" : "--match-filter \"duration<=?" + max_duration + "\" ";
-    const std::string o_rate = max_rate.empty() ? "" : "-r " + max_rate + " ";
+        args.max_duration.empty() ? "" : "--match-filter \"duration<=?" + args.max_duration + "\" ";
+    const std::string o_rate = args.max_rate.empty() ? "" : "-r " + args.max_rate + " ";
 
     const std::string baseurl = "https://soundcloud.com/discover/sets/charts-";
-    const std::string endurl = ":" + country + " ";
+    const std::string endurl = ":" + args.country + " ";
 
     int total = 0;
 
@@ -250,8 +248,8 @@ int downloader::download(const std::string& country, bool cleanup, bool normaliz
     MSG_SONGS_TOTAL(total);
     db.close();
 
-    if (cleanup) remove_images_in_dir(dest_dir);
-    if (normalize) normalize_filenames(dest_dir);
+    if (args.cleanup) remove_images_in_dir(args.dest_dir);
+    if (args.normalize) normalize_filenames(args.dest_dir);
 
     fs::current_path(prev_path);
     return 0;
@@ -268,9 +266,9 @@ std::ostream& operator<<(std::ostream& os, const downloader& dl) {
 
     os << "Downloader options:" << std::endl;
     watch(os, dl.db_path);
-    watch(os, dl.dest_dir);
-    if (!dl.max_rate.empty()) watch(os, dl.max_rate);
-    if (!dl.max_duration.empty()) watch(os, dl.max_duration);
+    watch(os, dl.args.dest_dir);
+    if (!dl.args.max_rate.empty()) watch(os, dl.args.max_rate);
+    if (!dl.args.max_duration.empty()) watch(os, dl.args.max_duration);
     watch(os, o_gen);
     watch(os, o_prg);
     watch(os, o_prgt);

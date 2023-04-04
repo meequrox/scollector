@@ -16,17 +16,25 @@
 namespace mqr {
 namespace fs = std::filesystem;
 
+typedef struct {
+    fs::path dest_dir;
+    std::string max_rate;
+    std::string max_duration;
+    std::string country;
+    bool cleanup;
+    bool normalize;
+} downloader_args;
+
 class downloader {
    private:
+    const downloader_args args;
+
     fs::path db_path;
-    const fs::path dest_dir;
-    const std::string max_rate;
-    const std::string max_duration;
     std::vector<std::string> playlists;
 
    public:
-    downloader(const fs::path& output, const std::string& rate_limit, const std::string& duration_limit);
-    int download(const std::string& country, bool cleanup, bool normalize) const;
+    downloader(const downloader_args& args);
+    int download() const;
 
     friend std::ostream& operator<<(std::ostream& os, const downloader& obj);
 };
