@@ -167,14 +167,14 @@ void args::help(char* binary) const {
 
 #define watch(os, x) os << std::left << std::setw(24) << #x ":" << std::boolalpha << x << std::endl;
 
-std::ostream& operator<<(std::ostream& os, const args& obj) {
+std::ostream& operator<<(std::ostream& os, const args& args) {
     os << "Args options:" << std::endl;
-    watch(os, obj.verbose);
-    watch(os, obj.output);
-    watch(os, obj.cleanup);
-    watch(os, obj.normalize);
-    if (!obj.rate_limit.empty()) watch(os, obj.rate_limit);
-    if (!obj.duration_limit.empty()) watch(os, obj.duration_limit);
+    watch(os, args.verbose);
+    watch(os, args.output);
+    watch(os, args.cleanup);
+    watch(os, args.normalize);
+    if (!args.rate_limit.empty()) watch(os, args.rate_limit);
+    if (!args.duration_limit.empty()) watch(os, args.duration_limit);
 
     return os << std::endl;
 }
