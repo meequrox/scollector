@@ -5,14 +5,27 @@
 
 #include <cstdint>
 
-bool db_open(const char* path, sqlite3** dbpp);
+namespace mqr {
+class db {
+   private:
+    /* dbp values:
+     * nullptr if db not opened
+     * 0xADDR if db opened */
+    sqlite3* dbp;
 
-void db_begin(sqlite3* dbp);
-void db_insert(sqlite3* dbp, const uint32_t id);
-void db_end(sqlite3* dbp);
+   public:
+    db();
 
-bool db_id_exists(const uint32_t id, sqlite3* dbp);
+    // NOTE: SQL queries must end with ;
+    int open(const char* path);
 
-void db_close(sqlite3* dbp);
+    int transaction_begin();
+    int insert(const uint32_t id);
+    int transaction_end();
+
+    bool id_exists(const uint32_t id);
+    int close();
+};
+}  // namespace mqr
 
 #endif  // DB_HPP

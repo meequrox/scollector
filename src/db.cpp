@@ -2,64 +2,82 @@
 
 #include <iostream>
 
-// NOTE: Queries must end with ;
+namespace mqr {
+db::db() : dbp(nullptr) {}
 
-bool db_open(const char* path, sqlite3** dbpp) {
-    if (sqlite3_open(path, dbpp) != SQLITE_OK) {
+int db::open(const char* path) {
+    if (dbp) {
+        std::cout << __FUNCTION__ << ": another db is currently open " << std::endl;
+        return -1;
+    }
+
+    if (sqlite3_open(path, &dbp) != SQLITE_OK) {
         std::cout << __FUNCTION__ << ": failed open " << path << std::endl;
-        return false;
+        return -2;
     }
 
-    constexpr char sql_create[] = "CREATE TABLE songs(id INT NOT NULL UNIQUE,PRIMARY KEY(id));";
-    sqlite3_exec(*dbpp, sql_create, nullptr, nullptr, nullptr);
+    const std::string query = "CREATE TABLE songs(id INT NOT NULL UNIQUE,PRIMARY KEY(id));";
+    sqlite3_exec(dbp, query.c_str(), nullptr, nullptr, nullptr);
 
-    return true;
+    return 0;
 }
 
-void db_begin(sqlite3* dbp) {
-    if (!dbp) return;
+int db::transaction_begin() {
+    if (!dbp) return -1;
 
-    std::string query = "BEGIN TRANSACTION;";
+    const std::string query = "BEGIN TRANSACTION;";
     char* errmsg = nullptr;
 
+    int status = 0;
     if (sqlite3_exec(dbp, query.c_str(), nullptr, nullptr, &errmsg) != SQLITE_OK) {
         std::cout << __FUNCTION__ << ": failed " << query << std::endl;
         std::cout << __FUNCTION__ << ": " << errmsg << std::endl;
 
         sqlite3_free(errmsg);
+        status = -2;
     }
+
+    return status;
 }
 
-void db_insert(sqlite3* dbp, const uint32_t id) {
-    if (!dbp) return;
+int db::insert(const uint32_t id) {
+    if (!dbp) return -1;
 
-    std::string sql_insert = "INSERT INTO songs(id) VALUES(";
-    std::string query = sql_insert + std::to_string(id) + ");";
+    const std::string sql_insert = "INSERT INTO songs(id) VALUES(";
+    const std::string query = sql_insert + std::to_string(id) + ");";
     char* errmsg = nullptr;
 
+    int status = 0;
     if (sqlite3_exec(dbp, query.c_str(), nullptr, nullptr, &errmsg) != SQLITE_OK) {
         std::cout << __FUNCTION__ << ": failed " << query << std::endl;
         std::cout << __FUNCTION__ << ": " << errmsg << std::endl;
 
         sqlite3_free(errmsg);
+        status = -2;
     }
+
+    return status;
 }
 
-void db_end(sqlite3* dbp) {
-    if (!dbp) return;
+int db::transaction_end() {
+    if (!dbp) return -1;
 
-    std::string query = "END TRANSACTION;";
+    const std::string query = "END TRANSACTION;";
     char* errmsg = nullptr;
 
+    int status = 0;
     if (sqlite3_exec(dbp, query.c_str(), nullptr, nullptr, &errmsg) != SQLITE_OK) {
         std::cout << __FUNCTION__ << ": failed " << query << std::endl;
         std::cout << __FUNCTION__ << ": " << errmsg << std::endl;
 
         sqlite3_free(errmsg);
+        status = -2;
     }
+
+    return status;
 }
 
-static int db_exists_callback(void* exists, int count, char** data, char** columns) {
+static int id_exists_callback(void* exists, int count, char** data, char** columns) {
     /* *exists = true  if there is 1 column
      * *exists = false if there is no columns */
 
@@ -69,15 +87,15 @@ static int db_exists_callback(void* exists, int count, char** data, char** colum
     return 0;
 }
 
-bool db_id_exists(const uint32_t id, sqlite3* dbp) {
+bool db::id_exists(const uint32_t id) {
     if (!dbp) return false;
 
-    std::string sql_exists = "SELECT 1 FROM songs WHERE id=";
-    std::string query = sql_exists + std::to_string(id) + ";";
+    const std::string sql_exists = "SELECT 1 FROM songs WHERE id=";
+    const std::string query = sql_exists + std::to_string(id) + ";";
     char* errmsg = nullptr;
 
     bool exists = false;
-    if (sqlite3_exec(dbp, query.c_str(), db_exists_callback, (void*)&exists, &errmsg) != SQLITE_OK) {
+    if (sqlite3_exec(dbp, query.c_str(), id_exists_callback, (void*)&exists, &errmsg) != SQLITE_OK) {
         std::cout << __FUNCTION__ << ": failed " << query << std::endl;
         std::cout << __FUNCTION__ << ": " << errmsg << std::endl;
 
@@ -87,6 +105,12 @@ bool db_id_exists(const uint32_t id, sqlite3* dbp) {
     return exists;
 }
 
-void db_close(sqlite3* dbp) {
-    if (dbp) sqlite3_close(dbp);
+int db::close() {
+    if (dbp) {
+        sqlite3_close(dbp);
+        dbp = nullptr;
+    }
+
+    return 0;
 }
+}  // namespace mqr
