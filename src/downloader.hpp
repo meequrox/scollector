@@ -26,7 +26,7 @@ class downloader {
 
    public:
     downloader(const fs::path& output, const std::string& rate_limit, const std::string& duration_limit);
-    bool download(const std::string& country, bool cleanup, bool normalize) const;
+    int download(const std::string& country, bool cleanup, bool normalize) const;
 
     friend std::ostream& operator<<(std::ostream& os, const downloader& obj);
 };

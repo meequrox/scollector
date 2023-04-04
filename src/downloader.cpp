@@ -163,135 +163,119 @@ constexpr char o_prgt[] = "--progress-template \"'%(info.title)s' %(progress._de
 constexpr char o_out[] = "-q --progress --no-warnings ";
 constexpr char o_pp[] = "--embed-thumbnail --embed-metadata ";
 
-#define LW(w) std::left << std::setw(w)
-#define TNUM "T" << omp_get_thread_num() << ": "
-
-#define MSG_JSON_LOADING(p) std::cout << TNUM << LW(32) << p << " - Downloading JSON" << std::endl;
-#define MSG_JSON_LOADED(p) std::cout << TNUM << LW(32) << p << " - JSON downloaded" << std::endl;
-#define MSG_SONGS_LOADING(p, c) \
-    std::cout << TNUM << LW(32) << p << " - Downloading " << c << " songs" << std::endl;
-#define MSG_SONGS_LOADED(p, c) \
-    std::cout << TNUM << LW(32) << p << " - " << c << " songs downloaded" << std::endl;
-
+#define TNUM omp_get_thread_num()
+#define TMSG_JSON_LOADING(p) printf("\rT%d: %-*s - Downloading JSON\n", TNUM, 32, p);
+#define TMSG_JSON_LOADED(p) printf("\rT%d: %-*s - JSON downloaded\n", TNUM, 32, p);
+#define TMSG_SONGS_LOADING(p, c) printf("\rT%d: %-*s -> Downloading %zu songs\n", TNUM, 31, p, c);
+#define TMSG_SONGS_LOADED(p, c) printf("\rT%d: %-*s <- %zu songs downloaded\n", TNUM, 31, p, c);
+#define TMSG_INTERRUPTED(p) printf("\rT%d: %-*s - Download interrupted\n", TNUM, 32, p);
 #define MSG_SONGS_TOTAL(c) std::cout << "Total " << c << " new songs downloaded" << std::endl;
 
-bool downloader::download(const std::string& country, bool cleanup, bool normalize) const {
-    sqlite3* db = nullptr;
-    if (!db_open(db_path.c_str(), &db)) return false;
+int downloader::download(const std::string& country, bool cleanup, bool normalize) const {
+    mqr::db db;
+    if (db.open(db_path.c_str()) != 0) return -1;
 
-    constexpr char baseurl[] = "https://soundcloud.com/discover/sets/charts-";
     const fs::path prev_path = fs::current_path();
+    fs::create_directory(dest_dir);
+    fs::current_path(dest_dir);
 
-    int success = 1;
+    const std::string o_duration =
+        max_duration.empty() ? "" : "--match-filter \"duration<=?" + max_duration + "\" ";
+    const std::string o_rate = max_rate.empty() ? "" : "-r " + max_rate + " ";
+
+    const std::string baseurl = "https://soundcloud.com/discover/sets/charts-";
+    const std::string endurl = ":" + country + " ";
+
     int total = 0;
-    bool dest_dir_created = false;
 
     /* Critical sections:
-     * SEC_OUT - print to terminal
      * SEC_DB  - interaction with database
-     * SEC_FS  - interaction with filesystem
-     */
-    #pragma omp parallel for
-    for (const auto& p : playlists) {
-        std::string url = baseurl + p + ":" + country + " ";
-        std::string cmd = "yt-dlp " + url + o_gen + "--dump-json ";
-        if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
-        if (!max_rate.empty()) cmd += "-r " + max_rate;
+     * SEC_DL  - playlist download */
+    #pragma omp parallel
+    {
+        #pragma omp for reduction(+: total)
+        for (const auto& p : playlists) {
+            std::string url = baseurl + p + endurl;
+            std::string cmd = "yt-dlp " + url + o_gen + o_duration + o_rate + "--dump-json ";
 
-        #pragma omp critical(SEC_OUT)
-        MSG_JSON_LOADING(p);
+            TMSG_JSON_LOADING(p.c_str());
 
-        const std::string json_str = read_from_pipe(cmd);
-        if (json_str.empty()) {
-            #pragma omp atomic
-            success--;
-        }
-        if (success != 1) continue;
+            using nlohmann::json;
+            const json songs = json::parse(make_json_array(read_from_pipe(cmd)));
 
-        #pragma omp critical(SEC_OUT)
-        MSG_JSON_LOADED(p);
+            TMSG_JSON_LOADED(p.c_str());
 
-        const nlohmann::json songs = nlohmann::json::parse(make_json_array(json_str));
-        size_t count = 0;
-        std::vector<uint32_t> ids;
-        url.clear();
-
-        #pragma omp critical(SEC_DB)
-        {
-            for (const auto& song : songs) {
-                uint32_t id = std::stoull(static_cast<std::string>(song["id"]));
-
-                if (!db_id_exists(id, db)) {
-                    ids.push_back(id);
-                    count++;
-
-                    url += song["webpage_url"];
-                    url += " ";
-                }
-            }
-        }
-
-        if (count) {
-            cmd = "yt-dlp " + url + o_gen + o_prg + o_prgt + o_out + o_pp;
-            if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
-            if (!max_rate.empty()) cmd += "-r " + max_rate;
-
-            #pragma omp critical(SEC_FS)
-            {
-                fs::create_directory(dest_dir);
-                fs::current_path(dest_dir);
-                dest_dir_created = true;
-
-                #pragma omp critical(SEC_OUT)
-                MSG_SONGS_LOADING(p, count);
-
-                system((cmd + PIPE_TO_STDOUT).c_str());
-            }
+            size_t count = 0;
+            std::vector<uint32_t> ids;
+            url.clear();
 
             #pragma omp critical(SEC_DB)
             {
-                db_begin(db);
-                for (const auto& id : ids) db_insert(db, id);
-                db_end(db);
+                for (const auto& song : songs) {
+                    uint32_t id = std::stoull(static_cast<std::string>(song["id"]));
+
+                    if (!db.id_exists(id)) {
+                        ids.push_back(id);
+                        count++;
+
+                        url += "\"";
+                        url += song["webpage_url"];
+                        url += "\" ";
+                    }
+                }
             }
 
-            #pragma omp critical(SEC_OUT)
-            MSG_SONGS_LOADED(p, count);
+            if (count) {
+                cmd = "yt-dlp " + url + o_gen + o_prg + o_prgt + o_out + o_pp + o_duration + o_rate;
 
-            #pragma omp atomic
-            total += count;
+                #pragma omp critical(SEC_DL)
+                {
+                    TMSG_SONGS_LOADING(p.c_str(), count);
+                    system((cmd + PIPE_TO_STDOUT).c_str());
+                }
+
+                total += count;
+                TMSG_SONGS_LOADED(p.c_str(), count);
+
+                #pragma omp critical(SEC_DB)
+                {
+                    db.transaction_begin();
+                    for (const auto& id : ids) db.insert(id);
+                    db.transaction_end();
+                }
+            }
         }
     }
 
-    if (cleanup && dest_dir_created) remove_images_in_dir(dest_dir);
-    if (normalize && dest_dir_created) normalize_filenames(dest_dir);
     MSG_SONGS_TOTAL(total);
+    db.close();
 
-    if (dest_dir_created) fs::current_path(prev_path);
-    db_close(db);
+    if (cleanup) remove_images_in_dir(dest_dir);
+    if (normalize) normalize_filenames(dest_dir);
 
-    return success == 1;
+    fs::current_path(prev_path);
+    return 0;
 }
 
 #define watch(os, x) os << std::left << std::setw(24) << #x ":" << x << std::endl;
 
-std::ostream& operator<<(std::ostream& os, const downloader& obj) {
+std::ostream& operator<<(std::ostream& os, const downloader& dl) {
     os << "Downloader playlists:";
-    for (const auto& p : obj.playlists) {
+    for (const auto& p : dl.playlists) {
         os << " " << p;
     }
     os << std::endl;
 
     os << "Downloader options:" << std::endl;
-    watch(os, obj.db_path);
-    watch(os, obj.dest_dir);
+    watch(os, dl.db_path);
+    watch(os, dl.dest_dir);
+    if (!dl.max_rate.empty()) watch(os, dl.max_rate);
+    if (!dl.max_duration.empty()) watch(os, dl.max_duration);
     watch(os, o_gen);
     watch(os, o_prg);
     watch(os, o_prgt);
     watch(os, o_out);
     watch(os, o_pp);
-    if (!obj.max_rate.empty()) watch(os, obj.max_rate);
-    if (!obj.max_duration.empty()) watch(os, obj.max_duration);
 
     return os << std::endl;
 }
