@@ -2,21 +2,15 @@
 #define ARGS_HPP
 
 #include <filesystem>
+#include <map>
 
 namespace mqr {
 namespace fs = std::filesystem;
 
 class args {
    public:
-    bool verbose;
-    bool cleanup;
-    bool normalize;
-
-    std::string country_code;  // required
-    std::string rate_limit;
-    std::string duration_limit;
-
-    fs::path output;
+    std::map<std::string, bool> flags;
+    std::map<std::string, std::string> options;
 
     args();
     void reset_options();

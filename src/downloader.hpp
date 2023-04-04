@@ -2,6 +2,7 @@
 #define DOWNLOADER_HPP
 
 #include <filesystem>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -17,12 +18,8 @@ namespace mqr {
 namespace fs = std::filesystem;
 
 typedef struct {
-    fs::path dest_dir;
-    std::string max_rate;
-    std::string max_duration;
-    std::string country;
-    bool cleanup;
-    bool normalize;
+    std::map<std::string, std::string> options;
+    std::map<std::string, bool> flags;
 } downloader_args;
 
 class downloader {

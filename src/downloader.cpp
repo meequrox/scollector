@@ -174,15 +174,18 @@ int downloader::download() const {
     if (db.open(db_path.c_str()) != 0) return -1;
 
     const fs::path prev_path = fs::current_path();
-    fs::create_directory(args.dest_dir);
-    fs::current_path(args.dest_dir);
+    fs::create_directory(args.options.at("output"));
+    fs::current_path(args.options.at("output"));
 
     const std::string o_duration =
-        args.max_duration.empty() ? "" : "--match-filter \"duration<=?" + args.max_duration + "\" ";
-    const std::string o_rate = args.max_rate.empty() ? "" : "-r " + args.max_rate + " ";
+        args.options.at("duration_limit").empty()
+            ? ""
+            : "--match-filter \"duration<=?" + args.options.at("duration_limit") + "\" ";
+    const std::string o_rate =
+        args.options.at("rate_limit").empty() ? "" : "-r " + args.options.at("rate_limit") + " ";
 
     const std::string baseurl = "https://soundcloud.com/discover/sets/charts-";
-    const std::string endurl = ":" + args.country + " ";
+    const std::string endurl = ":" + args.options.at("country_code") + " ";
 
     int total = 0;
 
@@ -248,8 +251,8 @@ int downloader::download() const {
     MSG_SONGS_TOTAL(total);
     db.close();
 
-    if (args.cleanup) remove_images_in_dir(args.dest_dir);
-    if (args.normalize) normalize_filenames(args.dest_dir);
+    if (args.flags.at("cleanup")) remove_images_in_dir(args.options.at("output"));
+    if (args.flags.at("normalize")) normalize_filenames(args.options.at("output"));
 
     fs::current_path(prev_path);
     return 0;
@@ -266,9 +269,6 @@ std::ostream& operator<<(std::ostream& os, const downloader& dl) {
 
     os << "Downloader options:" << std::endl;
     watch(os, dl.db_path);
-    watch(os, dl.args.dest_dir);
-    if (!dl.args.max_rate.empty()) watch(os, dl.args.max_rate);
-    if (!dl.args.max_duration.empty()) watch(os, dl.args.max_duration);
     watch(os, o_gen);
     watch(os, o_prg);
     watch(os, o_prgt);

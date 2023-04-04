@@ -44,16 +44,16 @@ bool args::parse(int argc, char** argv) {
                         return false;
                     }
 
-                    country_code = argv[i + 1];
+                    options["country_code"] = argv[i + 1];
                     i++;
 
-                    if (country_code.size() != 2) {
-                        std::cout << "Unknown country code " << country_code << std::endl;
+                    if (options["country_code"].size() != 2) {
+                        std::cout << "Unknown country code " << options["country_code"] << std::endl;
                         help(argv[0]);
                         return false;
                     }
                 } else if (ch == 'v') {
-                    verbose = true;
+                    flags["verbose"] = true;
                 } else if (ch == 'o') {
                     if (i + 1 >= argc) {
                         std::cout << "-o option without path" << std::endl;
@@ -62,8 +62,8 @@ bool args::parse(int argc, char** argv) {
                     }
 
                     if (fs::exists(argv[i + 1]) && fs::is_directory(argv[i + 1])) {
-                        output = argv[i + 1];
-                        output = fs::absolute(output.lexically_normal()) / "scollector_dl";
+                        fs::path p = argv[i + 1];
+                        options["output"] = fs::absolute(p.lexically_normal()) / "scollector_dl";
                     } else {
                         std::cerr << argv[i + 1] << " doesn't exist or isn't a directory" << std::endl
                                   << std::endl;
@@ -73,9 +73,9 @@ bool args::parse(int argc, char** argv) {
 
                     i++;
                 } else if (ch == 'c') {
-                    cleanup = true;
+                    flags["cleanup"] = true;
                 } else if (ch == 'n') {
-                    normalize = true;
+                    flags["normalize"] = true;
                 } else if (ch == 'r') {
                     if (i + 1 >= argc) {
                         std::cout << "-r option without next arg" << std::endl;
@@ -83,7 +83,7 @@ bool args::parse(int argc, char** argv) {
                         return false;
                     }
 
-                    rate_limit = argv[i + 1];
+                    options["rate_limit"] = argv[i + 1];
                     i++;
                 } else if (ch == 'd') {
                     if (i + 1 >= argc) {
@@ -92,7 +92,7 @@ bool args::parse(int argc, char** argv) {
                         return false;
                     }
 
-                    duration_limit = argv[i + 1];
+                    options["duration_limit"] = argv[i + 1];
                     i++;
                 } else {
                     std::cout << "Unknown option -" << ch << std::endl;
@@ -107,7 +107,7 @@ bool args::parse(int argc, char** argv) {
         }
     }
 
-    if (country_code.empty()) {
+    if (options["country_code"].empty()) {
         std::cout << "-l option is required but not set" << std::endl;
         help(argv[0]);
         return false;
@@ -117,14 +117,14 @@ bool args::parse(int argc, char** argv) {
 }
 
 void args::reset_options() {
-    verbose = false;
-    cleanup = false;
-    normalize = false;
+    flags["verbose"] = false;
+    flags["cleanup"] = false;
+    flags["normalize"] = false;
 
-    country_code.clear();
-    rate_limit.clear();
-    duration_limit.clear();
-    output = fs::current_path() / "scollector_dl";
+    options["country_code"].clear();
+    options["rate_limit"].clear();
+    options["duration_limit"].clear();
+    options["output"] = fs::current_path() / "scollector_dl";
 }
 
 #define LW(w) std::left << std::setw(w)
@@ -132,21 +132,23 @@ void args::reset_options() {
 void args::help(char* binary) const {
     constexpr int w = 16;
 
-    std::cout << "Usage: " << binary << " -l COUNTRY [OPTIONS]" << std::endl << std::endl;
+    std::cout << "Usage: " << binary << " -l COUNTRY [OPTIONS] [FLAGS]" << std::endl << std::endl;
     std::cout << "options:" << std::endl;
-
-    std::cout << LW(w) << " -h,--help"
-              << "print this help message" << std::endl;
 
     std::cout << LW(w) << " -l COUNTRY"
               << "which country playlist to download (two-letter ISO 3166-2), e.g. ru, th, mx"
               << std::endl;
 
-    std::cout << LW(w) << " -v"
-              << "print additional info" << std::endl;
-
     std::cout << LW(w) << " -o PATH"
               << "set path where scollector directory will be created" << std::endl;
+
+    std::cout << std::endl << "flags:" << std::endl;
+
+    std::cout << LW(w) << " -h,--help"
+              << "print this help message" << std::endl;
+
+    std::cout << LW(w) << " -v"
+              << "print additional info" << std::endl;
 
     std::cout << LW(w) << " -c"
               << "yt-dlp may leave some images and .part files in directory" << std::endl;
@@ -165,16 +167,13 @@ void args::help(char* binary) const {
               << "maximum song duration in seconds, e.g. 600 or 130" << std::endl;
 }
 
-#define watch(os, x) os << std::left << std::setw(24) << #x ":" << std::boolalpha << x << std::endl;
+#define watchpair(os, x) \
+    os << std::left << std::setw(24) << x.first + ":" << std::boolalpha << x.second << std::endl;
 
 std::ostream& operator<<(std::ostream& os, const args& args) {
     os << "Args options:" << std::endl;
-    watch(os, args.verbose);
-    watch(os, args.output);
-    watch(os, args.cleanup);
-    watch(os, args.normalize);
-    if (!args.rate_limit.empty()) watch(os, args.rate_limit);
-    if (!args.duration_limit.empty()) watch(os, args.duration_limit);
+    for (const auto& flag : args.flags) watchpair(os, flag);
+    for (const auto& opt : args.options) watchpair(os, opt);
 
     return os << std::endl;
 }

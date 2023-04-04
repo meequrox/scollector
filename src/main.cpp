@@ -13,10 +13,9 @@ int main(int argc, char** argv) {
     mqr::args args;
     if (!args.parse(argc, argv)) return EXIT_FAILURE;
 
-    const mqr::downloader dl({args.output, args.rate_limit, args.duration_limit, args.country_code,
-                              args.cleanup, args.normalize});
+    const mqr::downloader dl({args.options, args.flags});
 
-    if (args.verbose) {
+    if (args.flags.at("verbose")) {
         std::cout << args;
 
         std::cout << "yt-dlp version: ";
