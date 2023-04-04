@@ -186,37 +186,38 @@ bool downloader::download(const std::string& country, bool cleanup, bool normali
     int total = 0;
     bool dest_dir_created = false;
 
-    omp_lock_t lock_db;
-    omp_init_lock(&lock_db);
+    /* Critical sections:
+     * SEC_OUT - print to terminal
+     * SEC_DB  - interaction with database
+     * SEC_FS  - interaction with filesystem
+     */
+    #pragma omp parallel for
+    for (const auto& p : playlists) {
+        std::string url = baseurl + p + ":" + country + " ";
+        std::string cmd = "yt-dlp " + url + o_gen + "--dump-json ";
+        if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
+        if (!max_rate.empty()) cmd += "-r " + max_rate;
 
-    #pragma omp parallel
-    {
-        #pragma omp for
-        for (const auto& p : playlists) {
-            std::string url = baseurl + p + ":" + country + " ";
-            std::string cmd = "yt-dlp " + url + o_gen + "--dump-json ";
-            if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
-            if (!max_rate.empty()) cmd += "-r " + max_rate;
+        #pragma omp critical(SEC_OUT)
+        MSG_JSON_LOADING(p);
 
-            #pragma omp critical(cout)
-            MSG_JSON_LOADING(p);
+        const std::string json_str = read_from_pipe(cmd);
+        if (json_str.empty()) {
+            #pragma omp atomic
+            success--;
+        }
+        if (success != 1) continue;
 
-            const std::string json_str = read_from_pipe(cmd);
-            if (json_str.empty()) {
-                #pragma omp atomic
-                success--;
-            }
-            if (success != 1) continue;
+        #pragma omp critical(SEC_OUT)
+        MSG_JSON_LOADED(p);
 
-            #pragma omp critical(cout)
-            MSG_JSON_LOADED(p);
+        const nlohmann::json songs = nlohmann::json::parse(make_json_array(json_str));
+        size_t count = 0;
+        std::vector<uint32_t> ids;
+        url.clear();
 
-            const nlohmann::json songs = nlohmann::json::parse(make_json_array(json_str));
-            size_t count = 0;
-            std::vector<uint32_t> ids;
-            url.clear();
-
-            omp_set_lock(&lock_db);
+        #pragma omp critical(SEC_DB)
+        {
             for (const auto& song : songs) {
                 uint32_t id = std::stoull(static_cast<std::string>(song["id"]));
 
@@ -228,40 +229,39 @@ bool downloader::download(const std::string& country, bool cleanup, bool normali
                     url += " ";
                 }
             }
-            omp_unset_lock(&lock_db);
+        }
 
-            if (count) {
-                cmd = "yt-dlp " + url + o_gen + o_prg + o_prgt + o_out + o_pp;
-                if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
-                if (!max_rate.empty()) cmd += "-r " + max_rate;
+        if (count) {
+            cmd = "yt-dlp " + url + o_gen + o_prg + o_prgt + o_out + o_pp;
+            if (!max_duration.empty()) cmd += "--match-filter \"duration<=?" + max_duration + "\" ";
+            if (!max_rate.empty()) cmd += "-r " + max_rate;
 
-                #pragma omp critical(fs)
-                {
-                    fs::create_directory(dest_dir);
-                    fs::current_path(dest_dir);
-                    dest_dir_created = true;
+            #pragma omp critical(SEC_FS)
+            {
+                fs::create_directory(dest_dir);
+                fs::current_path(dest_dir);
+                dest_dir_created = true;
 
-                    #pragma omp critical(cout)
-                    MSG_SONGS_LOADING(p, count);
+                #pragma omp critical(SEC_OUT)
+                MSG_SONGS_LOADING(p, count);
 
-                    system((cmd + PIPE_TO_STDOUT).c_str());
-                }
+                system((cmd + PIPE_TO_STDOUT).c_str());
+            }
 
-                omp_set_lock(&lock_db);
+            #pragma omp critical(SEC_DB)
+            {
                 db_begin(db);
                 for (const auto& id : ids) db_insert(db, id);
                 db_end(db);
-                omp_unset_lock(&lock_db);
-
-                #pragma omp critical(cout)
-                MSG_SONGS_LOADED(p, count);
-
-                #pragma omp atomic
-                total += count;
             }
+
+            #pragma omp critical(SEC_OUT)
+            MSG_SONGS_LOADED(p, count);
+
+            #pragma omp atomic
+            total += count;
         }
     }
-    omp_destroy_lock(&lock_db);
 
     if (cleanup && dest_dir_created) remove_images_in_dir(dest_dir);
     if (normalize && dest_dir_created) normalize_filenames(dest_dir);
