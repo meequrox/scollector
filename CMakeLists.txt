@@ -17,7 +17,7 @@ target_sources(scollector PRIVATE
     src/downloader.cpp
 )
 
-find_package (SQLite3 REQUIRED)
+find_package(SQLite3 REQUIRED)
 target_link_libraries(scollector PRIVATE SQLite::SQLite3)
 
 find_package(OpenMP REQUIRED)
