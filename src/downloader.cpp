@@ -18,7 +18,7 @@ static fs::path get_data_path() {
     if (data_path)
         p = data_path;
     else
-        p = std::getenv("USERPROFILE") + std::string("AppData\Roaming");
+        p = std::getenv("USERPROFILE") + std::string("AppData\\Roaming");
 #else  // UNIX-like
     data_path = std::getenv("XDG_DATA_HOME");
     if (data_path)
