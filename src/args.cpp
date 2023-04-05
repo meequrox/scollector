@@ -117,13 +117,15 @@ bool args::parse(int argc, char** argv) {
 }
 
 void args::reset_options() {
+    flags.clear();
     flags["verbose"] = false;
     flags["cleanup"] = false;
     flags["normalize"] = false;
 
-    options["country_code"].clear();
-    options["rate_limit"].clear();
-    options["duration_limit"].clear();
+    options.clear();
+    options["country_code"] = "";
+    options["rate_limit"] = "";
+    options["duration_limit"] = "";
     options["output"] = fs::current_path() / "scollector_dl";
 }
 

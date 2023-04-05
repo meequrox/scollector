@@ -23,5 +23,7 @@ target_link_libraries(scollector PRIVATE SQLite::SQLite3)
 find_package(OpenMP REQUIRED)
 target_link_libraries(scollector PRIVATE OpenMP::OpenMP_CXX)
 
+set_target_properties(scollector PROPERTIES LINK_FLAGS_RELEASE -s)
+
 install(TARGETS scollector
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
