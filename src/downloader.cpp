@@ -31,8 +31,10 @@ static fs::path get_data_path() {
 }
 
 downloader::downloader(const downloader_args& args) : args(std::move(args)) {
-    const std::vector<std::string> charts = {"top", "trending"};
-    const std::vector<std::string> genres = {"danceedm", "electronic", "hiphoprap", "house"};
+    using namespace std;
+    const vector<string> charts = {"top", "trending"};
+    const vector<string> genres = {"all-music", "danceedm", "electronic", "hiphoprap", "house"};
+
     for (const auto& c : charts) {
         for (const auto& g : genres) {
             playlists.push_back(c + ":" + g);
@@ -92,7 +94,7 @@ inline static bool is_compatible_extension(const std::vector<std::string>& exts,
 void remove_images_in_dir(const fs::path dir) {
     const std::vector<std::string> extensions = {".png", ".jpg", ".part"};
 
-    for (const fs::directory_entry& entry : fs::directory_iterator(dir)) {
+    for (const auto& entry : fs::directory_iterator(dir)) {
         if (entry.is_regular_file() && is_compatible_extension(extensions, entry.path())) {
             fs::remove(entry.path());
         }
@@ -143,12 +145,13 @@ static std::string filter_filename(const std::string& str) {
 }
 
 static void normalize_filenames(const fs::path dir) {
-    const std::vector<std::string> extensions = {".mp3", ".wav", ".aac"};
+    using namespace std;
+    const vector<string> extensions = {".mp3", ".wav", ".aac"};
 
-    for (const fs::directory_entry& entry : fs::directory_iterator(dir)) {
+    for (const auto& entry : fs::directory_iterator(dir)) {
         if (entry.is_regular_file() && is_compatible_extension(extensions, entry.path())) {
-            const std::string from = entry.path().filename().generic_string();
-            std::string to = filter_filename(from);
+            const string from = entry.path().filename().generic_string();
+            const string to = filter_filename(from);
 
             if (from != to) fs::rename(from, to);
         }
