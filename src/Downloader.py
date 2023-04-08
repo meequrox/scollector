@@ -5,13 +5,15 @@ import multiprocessing
 import yt_dlp
 from Database import Database
 
+
 class Downloader:
     """
     Custom wrapper around yt-dlp interface.
     Downloads charts from SoundCloud.
     """
 
-    def __init__(self, name : str, params):
+    def __init__(self, name: str, params):
+
         def get_data_path() -> str:
             """
             Returns the path to store data on the current OS.
@@ -19,11 +21,15 @@ class Downloader:
             """
 
             if sys.platform.startswith("win32"):
-                path = os.getenv('APPDATA', default=os.path.join(os.path.expanduser('~'), "AppData", "Roaming"))
+                path = os.getenv('APPDATA',
+                                 default=os.path.join(os.path.expanduser('~'),
+                                                      "AppData", "Roaming"))
             elif sys.platform.startswith("darwin"):
                 path = os.path.join(os.path.expanduser('~'), "Library")
             else:
-                path = os.getenv('XDG_DATA_HOME', default=os.path.join(os.path.expanduser('~'), '.local', 'share'))
+                path = os.getenv('XDG_DATA_HOME',
+                                 default=os.path.join(os.path.expanduser('~'),
+                                                      '.local', 'share'))
 
             return path
 
@@ -40,25 +46,26 @@ class Downloader:
 
             return numeric_limit
 
-        self.__country : str = params.country
-        self.__cleanup : bool = params.cleanup
-        self.__normalize : bool = params.normalize
+        self.__country: str = params.country
+        self.__cleanup: bool = params.cleanup
+        self.__normalize: bool = params.normalize
 
-        self.__max_duration : int = params.duration or -1
-        self.__max_rate : int = rate_limit_stoi(params.rate) or -1
+        self.__max_duration: int = params.duration or -1
+        self.__max_rate: int = rate_limit_stoi(params.rate) or -1
 
-        self.__databasePath : str = os.path.join(get_data_path(), name, "main.db")
-        self.__outputPath : str = params.output or os.path.abspath(os.getcwd())
+        self.__databasePath: str = os.path.join(get_data_path(), name,
+                                                "main.db")
+        self.__outputPath: str = params.output or os.path.abspath(os.getcwd())
         self.__outputPath = os.path.join(self.__outputPath, f"{name}_dl")
 
         charts = ["top", "trending"]
         genres = ["all-music", "danceedm", "electronic", "hiphoprap", "house"]
-        self.__playlists : list[str] = []
+        self.__playlists: list[str] = []
         for c in charts:
             for g in genres:
                 self.__playlists.append(f"{c}:{g}")
 
-        self.__ydl_opts : dict = {
+        self.__ydl_opts: dict = {
             "quiet": True,
             "no_warnings": True,
             "outtmpl": "%(uploader)s - %(title)s.%(id)s.%(ext)s",
@@ -69,8 +76,13 @@ class Downloader:
             "writethumbnail": False,
             "cachedir": False,
             "postprocessors": [
-                {"key": "FFmpegMetadata", "add_metadata": True},
-                {"key": "EmbedThumbnail"},
+                {
+                    "key": "FFmpegMetadata",
+                    "add_metadata": True
+                },
+                {
+                    "key": "EmbedThumbnail"
+                },
             ],
             "geo_bypass": True,
             "noprogress": True,
@@ -84,14 +96,23 @@ class Downloader:
 
         print(f"{self.__class__.__name__} options:")
         print(f"  {'{0: <32}'.format('Country code:')} {self.__country}")
-        print(f"  {'{0: <32}'.format('Cleanup after download:')} {self.__cleanup}")
-        print(f"  {'{0: <32}'.format('Normalize filenames:')} {self.__normalize}")
+        print(
+            f"  {'{0: <32}'.format('Cleanup after download:')} {self.__cleanup}"
+        )
+        print(
+            f"  {'{0: <32}'.format('Normalize filenames:')} {self.__normalize}")
         if self.__max_duration > 0:
-            print(f"  {'{0: <32}'.format('Maximum duration:')} {self.__max_duration}")
+            print(
+                f"  {'{0: <32}'.format('Maximum duration:')} {self.__max_duration}"
+            )
         if self.__max_rate > 0:
-            print(f"  {'{0: <32}'.format('Maximum download rate:')} {self.__max_rate} B/s")
+            print(
+                f"  {'{0: <32}'.format('Maximum download rate:')} {self.__max_rate} B/s"
+            )
         print(f"  {'{0: <32}'.format('Database path:')} {self.__databasePath}")
-        print(f"  {'{0: <32}'.format('Output directory path:')} {self.__outputPath}")
+        print(
+            f"  {'{0: <32}'.format('Output directory path:')} {self.__outputPath}"
+        )
         print(f"  {'{0: <32}'.format('Playlists:')}", end=" ")
         for p in self.__playlists:
             print(p, end=" ")
@@ -130,7 +151,7 @@ class Downloader:
 
             new = ""
             for c in fn:
-                rus: bool = ("а" <= c <= "я") or ("А" <= c <= "Я") or c == "ё" or c == "Ё"
+                rus: bool = ("а" <= c <= "я") or ("А" <= c <= "Я") or c in "ёЁ"
                 _ascii: bool = (" " <= c <= "}") and c not in "'?@`$"
                 if rus or _ascii:
                     new += c
@@ -145,16 +166,16 @@ class Downloader:
         exts = [".mp3", ".wav", ".aac"]
         for f in os.listdir(self.__outputPath):
             if os.path.isfile(f) and self.__is_compatible_ext(exts, f):
-                fn_from : str = os.path.basename(f)
-                fn_to : str = filter_filename(fn_from)
+                fn_from: str = os.path.basename(f)
+                fn_to: str = filter_filename(fn_from)
                 if fn_from != fn_to:
                     os.rename(fn_from, fn_to)
 
-    def __playlist_get_songs(self, playlist : str) -> dict[int, str]:
+    def __playlist_get_songs(self, playlist: str) -> dict[int, str]:
         """Loads JSON information for given playlist and creates {id: url} dictionary of compatible entries"""
 
         url = f"https://soundcloud.com/discover/sets/charts-{playlist}:{self.__country}"
-        songs : dict[int, str] = {}
+        songs: dict[int, str] = {}
 
         with yt_dlp.YoutubeDL(self.__ydl_opts) as ydl:
             info = ydl.sanitize_info(ydl.extract_info(url, download=False))
@@ -176,17 +197,15 @@ class Downloader:
 
         return songs
 
-
-    def __links_download(self, urls : list[str]):
+    def __links_download(self, urls: list[str]):
         """Downloads file for each URL in list"""
 
         with yt_dlp.YoutubeDL(self.__ydl_opts) as ydl:
-            code : int = ydl.download(urls)
+            code: int = ydl.download(urls)
         if code:
             print("yt-dlp failed to download this playlist")
 
-
-    def playlist_process(self, playlist : str):
+    def playlist_process(self, playlist: str):
         """
         This method is NOT intended to be called directly, but cannot be private due to the multiprocessing map.
 
@@ -210,15 +229,15 @@ class Downloader:
         if not db.is_open():
             return False
 
-        pnum : int = get_process_num()
-        playlist_fstr : str = "{0: <32}".format(playlist)
+        pnum: int = get_process_num()
+        playlist_fstr: str = "{0: <32}".format(playlist)
         print(f"P{pnum}: {playlist_fstr} - Downloading JSON")
 
-        songs : dict[int, str] = self.__playlist_get_songs(playlist)
+        songs: dict[int, str] = self.__playlist_get_songs(playlist)
         print(f"P{pnum}: {playlist_fstr} + JSON downloaded")
 
-        urls : list[str] = []
-        ids : list[int] = []
+        urls: list[str] = []
+        ids: list[int] = []
 
         # Only 1 process at a time can perform R/W operations with database
         lock_db.acquire()  # Lock database mutex
@@ -245,7 +264,6 @@ class Downloader:
 
             print(f"P{pnum}: {playlist_fstr[:-1]} <- {count} songs downloaded")
 
-
     def download(self):
         """Start downloading playlists"""
 
@@ -256,7 +274,7 @@ class Downloader:
             lock_db = l1
 
         # Remember OLDPWD then cd into output directory
-        prev_path : str = os.path.abspath(os.getcwd())
+        prev_path: str = os.path.abspath(os.getcwd())
         os.makedirs(self.__outputPath, exist_ok=True)
         os.chdir(self.__outputPath)
 

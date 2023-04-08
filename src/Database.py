@@ -1,5 +1,6 @@
 import sqlite3
 
+
 class Database:
     """
     Custom wrapper around SQLite3 interface. Supports INSERT, BEGIN, COMMIT operations.
@@ -8,9 +9,9 @@ class Database:
     Can be reopened after using close().
     """
 
-    def __init__(self, path : str):
+    def __init__(self, path: str):
         # Any operations must be prevented if this variable is False
-        self.__opened : bool = False
+        self.__opened: bool = False
 
         try:
             self.__handler = sqlite3.connect(path)
@@ -22,7 +23,9 @@ class Database:
         if self.__opened:
             # Try to create `songs` table, do nothing if it exists
             try:
-                self.__cursor.execute("CREATE TABLE songs(id INT NOT NULL UNIQUE,PRIMARY KEY(id));")
+                self.__cursor.execute(
+                    "CREATE TABLE songs(id INT NOT NULL UNIQUE,PRIMARY KEY(id));"
+                )
             except sqlite3.OperationalError:
                 pass
 
@@ -47,7 +50,7 @@ class Database:
             except sqlite3.OperationalError as error:
                 print(f"{self.__class__.__name__}: {error}")
 
-    def insert(self, _id : int):
+    def insert(self, _id: int):
         """Insert id into opened database"""
 
         if self.__opened:
@@ -56,7 +59,7 @@ class Database:
             except sqlite3.OperationalError as error:
                 print(f"{self.__class__.__name__}: {error}")
 
-    def id_exists(self, _id : int) -> bool:
+    def id_exists(self, _id: int) -> bool:
         """Check if song id exists in opened database"""
 
         # 0 if id is not in db
