@@ -3,7 +3,7 @@ import os
 import multiprocessing
 
 import yt_dlp
-from Database import Database
+from .Database import Database
 
 
 class Downloader:

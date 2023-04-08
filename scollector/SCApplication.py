@@ -1,18 +1,5 @@
-#!/usr/bin/env python3
-
 import argparse
-from Downloader import Downloader
-
-
-def process_country(s: str) -> str:
-    """Process country code from CLI argument"""
-
-    s = s.lower()
-    if len(s) != 2:
-        raise ValueError(
-            f"Country: expected two-letter ISO 3166-2 code, got {s} ({len(s)} letters)"
-        )
-    return s
+from .Downloader import Downloader
 
 
 class SCApplication:
@@ -23,6 +10,17 @@ class SCApplication:
 
     def run(self):
         """Parse CLI arguments then run downloader"""
+
+        def process_country(s: str) -> str:
+            """Process country code from CLI argument"""
+
+            s = s.lower()
+            if len(s) != 2:
+                raise ValueError(
+                    f"Country: expected two-letter ISO 3166-2 code, got {s} ({len(s)} letters)"
+                )
+            return s
+
         parser = argparse.ArgumentParser(prog=self.__name,
                                          description=self.__description)
 
@@ -72,8 +70,3 @@ class SCApplication:
         # Download playlists
         if not dl.download():
             print("There were some errors while downloading")
-
-
-if __name__ == "__main__":
-    app = SCApplication()
-    app.run()
