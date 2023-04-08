@@ -6,6 +6,13 @@ import yt_dlp
 from .Database import Database
 
 
+def lock_init(l1):
+    """Global database lock initializer"""
+
+    global lock_db
+    lock_db = l1
+
+
 class Downloader:
     """
     Custom wrapper around yt-dlp interface.
@@ -53,8 +60,10 @@ class Downloader:
         self.__max_duration: int = params.duration or -1
         self.__max_rate: int = rate_limit_stoi(params.rate) or -1
 
-        self.__databasePath: str = os.path.join(get_data_path(), name,
-                                                "main.db")
+        self.__databasePath: str = os.path.join(get_data_path(), name)
+        os.makedirs(self.__databasePath, exist_ok=True)
+        self.__databasePath = os.path.join(self.__databasePath, "main.db")
+
         self.__outputPath: str = params.output or os.path.abspath(os.getcwd())
         self.__outputPath = os.path.join(self.__outputPath, f"{name}_dl")
 
@@ -180,7 +189,7 @@ class Downloader:
         with yt_dlp.YoutubeDL(self.__ydl_opts) as ydl:
             info = ydl.sanitize_info(ydl.extract_info(url, download=False))
 
-        if "entries" in info.keys():
+        if info is not None and "entries" in info.keys():
             for songInfo in info["entries"]:
                 try:
                     if self.__max_duration <= 0:
@@ -266,12 +275,6 @@ class Downloader:
 
     def download(self):
         """Start downloading playlists"""
-
-        def lock_init(l1):
-            """Global database lock initializer"""
-
-            global lock_db
-            lock_db = l1
 
         # Remember OLDPWD then cd into output directory
         prev_path: str = os.path.abspath(os.getcwd())
