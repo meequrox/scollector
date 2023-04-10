@@ -38,7 +38,6 @@ class SCApplication:
             type=str,
             help="path where scollector_dl directory will be created")
         parser.add_argument(
-            "-r",
             "--rate",
             type=str,
             help="maximum download rate in bytes per second, e.g. 50K, 4.2M")
@@ -53,6 +52,10 @@ class SCApplication:
                             "--verbose",
                             action="store_true",
                             help="more detailed log")
+        parser.add_argument(
+            "--reset",
+            action="store_true",
+            help="Delete ALL database entries before starting the download")
         parser.add_argument("--cleanup",
                             action="store_true",
                             help="all yt-dlp residual files will be deleted")

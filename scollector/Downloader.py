@@ -54,11 +54,12 @@ class Downloader:
             return numeric_limit
 
         self.__country: str = params.country
-        self.__cleanup: bool = params.cleanup
-        self.__normalize: bool = params.normalize
-
         self.__max_duration: int = params.duration or -1
         self.__max_rate: int = rate_limit_stoi(params.rate) or -1
+
+        self.__reset_db: bool = params.reset
+        self.__cleanup: bool = params.cleanup
+        self.__normalize: bool = params.normalize
 
         self.__databasePath: str = os.path.join(get_data_path(), name)
         os.makedirs(self.__databasePath, exist_ok=True)
@@ -105,24 +106,24 @@ class Downloader:
 
         print(f"{self.__class__.__name__} options:")
         print(f"  {'{0: <32}'.format('Country code:')} {self.__country}")
-        print(
-            f"  {'{0: <32}'.format('Cleanup after download:')} {self.__cleanup}"
-        )
-        print(
-            f"  {'{0: <32}'.format('Normalize filenames:')} {self.__normalize}")
         if self.__max_duration > 0:
             print(
-                f"  {'{0: <32}'.format('Maximum duration:')} {self.__max_duration}"
+                f" {'{0: <32}'.format('Maximum duration:')} {self.__max_duration}"
             )
         if self.__max_rate > 0:
             print(
-                f"  {'{0: <32}'.format('Maximum download rate:')} {self.__max_rate} B/s"
+                f" {'{0: <32}'.format('Maximum download rate:')} {self.__max_rate} B/s"
             )
-        print(f"  {'{0: <32}'.format('Database path:')} {self.__databasePath}")
+        print(f" {'{0: <32}'.format('Reset database:')} {self.__reset_db}")
         print(
-            f"  {'{0: <32}'.format('Output directory path:')} {self.__outputPath}"
+            f" {'{0: <32}'.format('Cleanup after download:')} {self.__cleanup}")
+        print(
+            f" {'{0: <32}'.format('Normalize filenames:')} {self.__normalize}")
+        print(f" {'{0: <32}'.format('Database path:')} {self.__databasePath}")
+        print(
+            f" {'{0: <32}'.format('Output directory path:')} {self.__outputPath}"
         )
-        print(f"  {'{0: <32}'.format('Playlists:')}", end=" ")
+        print(f" {'{0: <32}'.format('Playlists:')}", end=" ")
         for p in self.__playlists:
             print(p, end=" ")
         print()
@@ -275,6 +276,13 @@ class Downloader:
 
     def download(self):
         """Start downloading playlists"""
+
+        db = Database(self.__databasePath)
+        if self.__reset_db:
+            db.clear()
+
+        print(f"{db.rows()} IDs in the database")
+        db.close()
 
         # Remember OLDPWD then cd into output directory
         prev_path: str = os.path.abspath(os.getcwd())

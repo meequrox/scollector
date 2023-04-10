@@ -75,6 +75,31 @@ class Database:
 
         return bool(count)
 
+    def clear(self):
+        """Removes all entries from `songs` table"""
+
+        if self.__opened:
+            try:
+                self.__cursor.execute("DELETE FROM songs")
+            except sqlite3.OperationalError as error:
+                print(f"{self.__class__.__name__}: {error}")
+
+    def rows(self) -> int:
+        """Returns the number of rows in `songs` table for which id exists"""
+
+        count = 0
+
+        if self.__opened:
+            try:
+                self.__cursor.execute(
+                    "SELECT COUNT(id) as count_songs FROM songs;")
+                result = self.__cursor.fetchall()
+                count = result[0] if len(result) > 0 else 0
+            except sqlite3.OperationalError as error:
+                print(f"{self.__class__.__name__}: {error}")
+
+        return count
+
     def close(self):
         """Close current connection to database"""
 
