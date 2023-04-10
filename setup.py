@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="scollector",
-    version="2023.4.8",
+    version="2023.4.10",
     packages=["scollector"],
     url="https://github.com/meequrox/scollector",
     license="GPLv3",
