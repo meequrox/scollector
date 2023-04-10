@@ -20,17 +20,22 @@ class Database:
         except sqlite3.Error as error:
             print(f"{self.__class__.__name__}: {error}")
 
+        self.create_table()
+
+    def is_open(self) -> bool:
+        return self.__opened
+
+    def create_table(self):
+        """Creates `songs` table in the database"""
+
         if self.__opened:
-            # Try to create `songs` table, do nothing if it exists
             try:
                 self.__cursor.execute(
                     "CREATE TABLE songs(id INT NOT NULL UNIQUE,PRIMARY KEY(id));"
                 )
             except sqlite3.OperationalError:
+                # Do nothing if table exists
                 pass
-
-    def is_open(self) -> bool:
-        return self.__opened
 
     def transaction_begin(self):
         """Begin transaction in opened database"""
@@ -68,7 +73,7 @@ class Database:
 
         if self.__opened:
             try:
-                self.__cursor.execute(f"SELECT 1 FROM songs WHERE id={_id}")
+                self.__cursor.execute(f"SELECT 1 FROM songs WHERE id={_id};")
                 count = len(self.__cursor.fetchall())
             except sqlite3.OperationalError as error:
                 print(f"{self.__class__.__name__}: {error}")
@@ -80,9 +85,10 @@ class Database:
 
         if self.__opened:
             try:
-                self.__cursor.execute("DELETE FROM songs")
+                self.__cursor.execute("DROP TABLE songs;")
             except sqlite3.OperationalError as error:
                 print(f"{self.__class__.__name__}: {error}")
+            self.create_table()
 
     def rows(self) -> int:
         """Returns the number of rows in `songs` table for which id exists"""
@@ -94,7 +100,8 @@ class Database:
                 self.__cursor.execute(
                     "SELECT COUNT(id) as count_songs FROM songs;")
                 result = self.__cursor.fetchall()
-                count = result[0] if len(result) > 0 else 0
+                if len(result) > 0 and len(result[0]) > 0:
+                    count = result[0][0]
             except sqlite3.OperationalError as error:
                 print(f"{self.__class__.__name__}: {error}")
 

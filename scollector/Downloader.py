@@ -105,7 +105,7 @@ class Downloader:
         """Prints information about involved paths and downloaded playlists"""
 
         print(f"{self.__class__.__name__} options:")
-        print(f"  {'{0: <32}'.format('Country code:')} {self.__country}")
+        print(f" {'{0: <32}'.format('Country code:')} {self.__country}")
         if self.__max_duration > 0:
             print(
                 f" {'{0: <32}'.format('Maximum duration:')} {self.__max_duration}"
