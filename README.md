@@ -44,12 +44,14 @@ I recommend using distro package manager on GNU/Linux, [brew](https://trac.ffmpe
 
 ## Usage
 
+The most convenient way to use the program is to create an alias or shortcut. For example, I use this: `alias scc='scollector --country RU -vn --cleanup -o ~/Music --rate 12M -d 800'`
+
 ```bash
 # Print help message
 ./scollector -h
 
 # Common use
-./scollector --country us
+./scollector --country us --reset
 ./scollector --country FR --cleanup -n
 ./scollector --country ru -o ~/Music -r 80M -d 1000 --cleanup
 ```
@@ -63,4 +65,3 @@ scollector creates a new directory named *scollector_dl* in destination director
 
 ## TODO
 - [ ] Remove hardcode for charts and genres. The user himself specifies which charts and genres to download.
-- [ ] Option to reset the database.
