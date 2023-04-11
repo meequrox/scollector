@@ -6,11 +6,14 @@ import yt_dlp
 from .Database import Database
 
 
-def lock_init(l1):
-    """Global database lock initializer"""
+def playlist_process_init(lock_db, counter_total):
+    """Global shared objects initializer"""
 
-    global lock_db
-    lock_db = l1
+    global sharedLockDB  # multiprocessing.Lock
+    sharedLockDB = lock_db
+
+    global sharedCounterTotal  # multiprocessing.Value
+    sharedCounterTotal = counter_total
 
 
 class Downloader:
@@ -54,10 +57,10 @@ class Downloader:
             return numeric_limit
 
         self.__country: str = params.country
-        self.__max_duration: int = params.duration or -1
-        self.__max_rate: int = rate_limit_stoi(params.rate) or -1
+        self.__maxDuration: int = params.duration or -1
+        self.__maxRate: int = rate_limit_stoi(params.rate) or -1
 
-        self.__reset_db: bool = params.reset
+        self.__resetDB: bool = params.reset
         self.__cleanup: bool = params.cleanup
         self.__normalize: bool = params.normalize
 
@@ -98,23 +101,23 @@ class Downloader:
             "noprogress": True,
             # "progress_template": {"download": "'%(info.title)s' %(progress._default_template)s"}
         }
-        if self.__max_rate > 0:
-            self.__ydl_opts["ratelimit"] = self.__max_rate
+        if self.__maxRate > 0:
+            self.__ydl_opts["ratelimit"] = self.__maxRate
 
     def info_print(self):
         """Prints information about involved paths and downloaded playlists"""
 
         print(f"{self.__class__.__name__} options:")
         print(f" {'{0: <32}'.format('Country code:')} {self.__country}")
-        if self.__max_duration > 0:
+        if self.__maxDuration > 0:
             print(
-                f" {'{0: <32}'.format('Maximum duration:')} {self.__max_duration}"
+                f" {'{0: <32}'.format('Maximum duration:')} {self.__maxDuration}"
             )
-        if self.__max_rate > 0:
+        if self.__maxRate > 0:
             print(
-                f" {'{0: <32}'.format('Maximum download rate:')} {self.__max_rate} B/s"
+                f" {'{0: <32}'.format('Maximum download rate:')} {self.__maxRate} B/s"
             )
-        print(f" {'{0: <32}'.format('Reset database:')} {self.__reset_db}")
+        print(f" {'{0: <32}'.format('Reset database:')} {self.__resetDB}")
         print(
             f" {'{0: <32}'.format('Cleanup after download:')} {self.__cleanup}")
         print(
@@ -193,10 +196,10 @@ class Downloader:
         if info is not None and "entries" in info.keys():
             for songInfo in info["entries"]:
                 try:
-                    if self.__max_duration <= 0:
+                    if self.__maxDuration <= 0:
                         # If max_duration is not set
                         songs[songInfo["id"]] = songInfo["webpage_url"]
-                    elif songInfo["duration"] <= self.__max_duration:
+                    elif songInfo["duration"] <= self.__maxDuration:
                         # If max_duration is set and the song is shorter
                         songs[songInfo["id"]] = songInfo["webpage_url"]
                 except KeyError:
@@ -250,7 +253,7 @@ class Downloader:
         ids: list[int] = []
 
         # Only 1 process at a time can perform R/W operations with database
-        lock_db.acquire()  # Lock database mutex
+        sharedLockDB.acquire()  # Lock database mutex
 
         for song_id, song_url in songs.items():
             if not db.id_exists(song_id):
@@ -262,7 +265,7 @@ class Downloader:
             db.insert(song_id)
         db.transaction_end()
 
-        lock_db.release()  # Unlock database mutex
+        sharedLockDB.release()  # Unlock database mutex
         db.close()
 
         count = len(urls)
@@ -272,13 +275,16 @@ class Downloader:
             # Can do I/O without locking because there are no filenames with same id
             self.__links_download(urls)
 
+            with sharedCounterTotal.get_lock():
+                sharedCounterTotal.value += count
+
             print(f"P{pnum}: {playlist_fstr[:-1]} <- {count} songs downloaded")
 
     def download(self):
         """Start downloading playlists"""
 
         db = Database(self.__databasePath)
-        if self.__reset_db:
+        if self.__resetDB:
             db.clear()
 
         print(f"{db.rows()} IDs in the database")
@@ -289,17 +295,25 @@ class Downloader:
         os.makedirs(self.__outputPath, exist_ok=True)
         os.chdir(self.__outputPath)
 
-        # Database lock (initializes global lock_db in lock_init() function)
-        ldb = multiprocessing.Lock()
+        # Shared objects that initialize global variables in playlist_process_init() function
+        local_lock_db = multiprocessing.Lock()
+        local_counter_total = multiprocessing.Value("i", 0)
 
         # Multiprocessing: each process downloads its own playlist. No GIL.
-        pool = multiprocessing.Pool(initializer=lock_init, initargs=(ldb,))
+        pool = multiprocessing.Pool(initializer=playlist_process_init,
+                                    initargs=(local_lock_db,
+                                              local_counter_total))
         pool.map(self.playlist_process, self.__playlists)
         pool.close()
         pool.join()
 
         self.__files_cleanup()
         self.__files_normalize()
+
+        files_count: int = len([f for f in os.listdir() if os.path.isfile(f)])
+        print(
+            f"\nTotal: {local_counter_total.value} files should have been downloaded, {files_count} files in output directory"
+        )
 
         # cd -
         os.chdir(prev_path)
