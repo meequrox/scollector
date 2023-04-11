@@ -57,24 +57,25 @@ pipx upgrade scollector
 
 ## Usage
 
-The most convenient way to use the program is to create an alias or shortcut. For example, I use this: `alias scc='scollector --country RU -vn --cleanup -o ~/Music --rate 12M -d 800'`
+The most convenient way to use the program is to create an alias or shortcut.
+
+For example, I use this: `alias scc='scollector --country RU -vn --cleanup -o ~/Music --rate 12M -d 800 --charts top trending --genres all-music world rock'`
 
 ```bash
 # Print help message
 ./scollector -h
 
 # Common use
-./scollector --country us --reset
-./scollector --country FR --cleanup -n
-./scollector --country ru -o ~/Music -r 80M -d 1000 --cleanup
+./scollector --country US --charts top --genres world --reset
+./scollector --country FR --charts trending top --genres rock deephouse hiphoprap --cleanup -n
+./scollector --country RU --genres house metal --charts trending -o ~/Music -r 80M -d 1000 --cleanup
 ```
 
-Find codes for `--country` option [here](https://en.wikipedia.org/wiki/ISO_3166-2#Current_codes).
-Note that there are some codes for which playlists do not exist. In this case, you will get `Unable to download JSON metadata: HTTP Error 404: Not Found` message from yt-dlp.
+Find codes for `--country` option [here](https://en.wikipedia.org/wiki/ISO_3166-2#Current_codes). Note that there are some codes for which playlists do not exist. In this case, you will get `Unable to download JSON metadata: HTTP Error 404: Not Found` message from yt-dlp.
 
-If `--output` option is not specified, the current working directory is used as destination directory.
+**Charts to choose from**: `top`, `trending`.
+
+**Genres to choose from**: `all-music`, `alternativerock`, `ambient`, `audiobooks`, `business`, `classical`, `comedy`, `country`, `danceedm`, `dancehall`, `deephouse`, `disco`, `drumbass`, `dubstep`, `electronic`, `entertainment`, `folksingersongwriter`, `hiphoprap`, `house`, `indie`, `jazzblues`, `latin`, `learning`, `metal`, `newspolitics`, `piano`, `pop`, `rbsoul`, `reggae`, `reggaeton`, `religionspirituality`, `rock`, `science`, `soundtrack`, `sports`, `storytelling`, `techno`, `technology`, `trance`, `trap`, `triphop`, `world`.
 
 scollector creates a new directory named *scollector_dl* in destination directory, so it won't harm your existing files.
-
-## TODO
-- [ ] Remove hardcode for charts and genres. The user himself specifies which charts and genres to download.
+If `--output` option is not specified, the current working directory is used as destination directory.

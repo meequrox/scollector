@@ -71,11 +71,9 @@ class Downloader:
         self.__outputPath: str = params.output or os.path.abspath(os.getcwd())
         self.__outputPath = os.path.join(self.__outputPath, f"{name}_dl")
 
-        charts = ["top", "trending"]
-        genres = ["all-music", "danceedm", "electronic", "hiphoprap", "house"]
         self.__playlists: list[str] = []
-        for c in charts:
-            for g in genres:
+        for c in params.charts:
+            for g in params.genres:
                 self.__playlists.append(f"{c}:{g}")
 
         self.__ydl_opts: dict = {
@@ -312,7 +310,7 @@ class Downloader:
 
         files_count: int = len([f for f in os.listdir() if os.path.isfile(f)])
         print(
-            f"\nTotal: {local_counter_total.value} files should have been downloaded, {files_count} files in output directory"
+            f"\nTotal: {local_counter_total.value or 'no'} files should have been downloaded, {files_count or 'no'} files in output directory"
         )
 
         # cd -
