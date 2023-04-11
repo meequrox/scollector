@@ -1,19 +1,21 @@
-# scollector
+## scollector
 
 Collects tracks **you haven't heard yet** from [SoundCloud](https://soundcloud.com/discover) charts and downloads them using [yt-dlp](https://github.com/yt-dlp/yt-dlp).
 Uses SQLite database engine and Python multiprocessing library.
 
-The program works fine on GNU/Linux and Windows. macOS is also supported but not tested.
+![GNU/Linux](https://img.shields.io/badge/Linux-FCC624.svg?style=for-the-badge&logo=Linux&logoColor=black) ![Windows](https://img.shields.io/badge/Windows-0078D6.svg?style=for-the-badge&logo=Windows&logoColor=white) ![macOS](https://img.shields.io/badge/macOS-000000.svg?style=for-the-badge&logo=macOS&logoColor=white)
+
+## Description
+
+SoundCloud has charts that are separated by track genre. Collectively, they are **playlists**. Playlists are updated once a day: a dozen songs are usually added to the tops, and many times more to the new ones.
+
+The idea is to have a program that will download from these playlists only those tracks that **the user has not yet heard**. It becomes something like a semi-automatic library, where the user only **has to sift out** the tracks he likes.
+
+scollector does not require authorization and does its job much faster than any single-threaded scripts.
 
 ## Screenshots
 
-![](https://hostux.pics/images/2023/04/08/scrathf7c2d159e4ba0f68.png)
-
-On PC with **8** threads and a speed limit of 8 Mbps, downloading the playlists from scratch (the database was cleared) took 5 minutes 17 seconds.
-
-Considering that more than half of the time was spent downloading files, scollector does its job **much faster** than any other single-threaded script or manual download and comparison :)
-
-If there are no new songs in playlists, the check takes about 1-2 minutes. More threads - faster check.
+![](https://img.tedomum.net/data/saymyname-bea14a.png)
 
 ## Installation
 
@@ -43,12 +45,13 @@ You also need to have `ffmpeg` installed for the thumbnail embedding to work.
 I recommend using distro package manager on GNU/Linux, [brew](https://trac.ffmpeg.org/wiki/CompilationGuide/macOS#ffmpegthroughHomebrew) on macOS, [choco](https://community.chocolatey.org/packages/ffmpeg) on Windows.
 
 
-## Update
+## Upgrade
 
 pipx remembers which directory scollector was installed from, so you can just do
 
 ```bash
-cd scollector # Cloned repo
+# Cloned repo
+cd scollector
 
 git pull
 
@@ -59,7 +62,7 @@ pipx upgrade scollector
 
 The most convenient way to use the program is to create an alias or shortcut.
 
-For example, I use this: `alias scc='scollector --country RU -vn --cleanup -o ~/Music --rate 12M -d 800 --charts top trending --genres all-music world rock'`
+For example: `alias scc='scollector --country GB -vn --cleanup -o ~/Music --charts top trending --genres all-music world rock'`
 
 ```bash
 # Print help message
