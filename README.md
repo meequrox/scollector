@@ -42,6 +42,19 @@ pipx install .
 You also need to have `ffmpeg` installed for the thumbnail embedding to work.
 I recommend using distro package manager on GNU/Linux, [brew](https://trac.ffmpeg.org/wiki/CompilationGuide/macOS#ffmpegthroughHomebrew) on macOS, [choco](https://community.chocolatey.org/packages/ffmpeg) on Windows.
 
+
+## Update
+
+pipx remembers which directory scollector was installed from, so you can just do
+
+```bash
+cd scollector # Cloned repo
+
+git pull
+
+pipx upgrade scollector
+```
+
 ## Usage
 
 The most convenient way to use the program is to create an alias or shortcut. For example, I use this: `alias scc='scollector --country RU -vn --cleanup -o ~/Music --rate 12M -d 800'`
