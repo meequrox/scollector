@@ -1,8 +1,13 @@
 from setuptools import setup
 
+with open(
+        os.path.dirname(os.path.realpath(__file__)) +
+        "/scollector/__version__") as reader:
+    version = reader.read().strip()
+
 setup(
     name="scollector",
-    version="2023.4.11",
+    version=version,
     packages=["scollector"],
     url="https://github.com/meequrox/scollector",
     license="GPLv3",
