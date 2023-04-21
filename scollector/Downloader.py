@@ -191,20 +191,21 @@ class Downloader:
         with yt_dlp.YoutubeDL(self.__ydl_opts) as ydl:
             info = ydl.sanitize_info(ydl.extract_info(url, download=False))
 
-        if info is not None and "entries" in info.keys():
-            for songInfo in info["entries"]:
-                try:
-                    if self.__maxDuration <= 0:
-                        # If max_duration is not set
-                        songs[songInfo["id"]] = songInfo["webpage_url"]
-                    elif songInfo["duration"] <= self.__maxDuration:
-                        # If max_duration is set and the song is shorter
-                        songs[songInfo["id"]] = songInfo["webpage_url"]
-                except KeyError:
-                    # If entry does not have some keys, do nothing
-                    pass
-        else:
+        if info is None or "entries" not in info.keys():
             print(f"{url}: Bad JSON")
+            return {}
+
+        for songInfo in info["entries"]:
+            try:
+                if self.__maxDuration <= 0:
+                    # If max_duration is not set
+                    songs[songInfo["id"]] = songInfo["webpage_url"]
+                elif songInfo["duration"] <= self.__maxDuration:
+                    # If max_duration is set and the song is shorter
+                    songs[songInfo["id"]] = songInfo["webpage_url"]
+            except TypeError or KeyError:
+                # If songInfo is None or doesn't have some keys, do nothing
+                pass
 
         return songs
 
