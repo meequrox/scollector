@@ -98,6 +98,7 @@ class SCApplication:
         parser.add_argument(
             "--country",
             type=process_country,
+            metavar="CODE",
             required=True,
             help=
             "which country playlist to download (two-letter ISO 3166-2), e.g. RU, TH, MX"
@@ -106,33 +107,37 @@ class SCApplication:
             "-o",
             "--output",
             type=str,
+            metavar="PATH",
             help="path where scollector_dl directory will be created")
         parser.add_argument(
             "--rate",
             type=str,
+            metavar="BPS",
             help="maximum download rate in bytes per second, e.g. 50K, 4.2M")
         parser.add_argument(
             "-d",
             "--duration",
             type=int,
+            metavar="SECONDS",
             help="maximum song duration in seconds, e.g. 600 or 130")
 
         # Flags
-        parser.add_argument("-v",
-                            "--verbose",
-                            action="store_true",
-                            help="more detailed log")
-        parser.add_argument(
+        flags = parser.add_argument_group("flags")
+        flags.add_argument("-v",
+                           "--verbose",
+                           action="store_true",
+                           help="more detailed log")
+        flags.add_argument(
             "--reset",
             action="store_true",
             help="Delete ALL database entries before starting the download")
-        parser.add_argument("--cleanup",
-                            action="store_true",
-                            help="all yt-dlp residual files will be deleted")
-        parser.add_argument("-n",
-                            "--normalize",
-                            action="store_true",
-                            help="exclude unsafe characters from filenames")
+        flags.add_argument("--cleanup",
+                           action="store_true",
+                           help="all yt-dlp residual files will be deleted")
+        flags.add_argument("-n",
+                           "--normalize",
+                           action="store_true",
+                           help="exclude unsafe characters from filenames")
         args = parser.parse_args()
 
         args.charts.sort()

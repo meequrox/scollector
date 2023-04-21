@@ -1,13 +1,22 @@
 from setuptools import setup
+import os
 
-with open(
-        os.path.dirname(os.path.realpath(__file__)) +
-        "/scollector/__version__") as reader:
-    version = reader.read().strip()
+def get_version() -> str:
+    v: str = "0.0.0"
+
+    path = os.path.dirname(os.path.realpath(__file__))
+    path = os.path.join(path, "scollector", "__version__")
+
+    if os.path.isfile(path):
+        fd = open(path)
+        v = fd.read().strip()
+        fd.close()
+
+    return v
 
 setup(
     name="scollector",
-    version=version,
+    version=get_version(),
     packages=["scollector"],
     url="https://github.com/meequrox/scollector",
     license="GPLv3",
